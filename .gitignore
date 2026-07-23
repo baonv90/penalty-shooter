@@ -65,6 +65,9 @@ node_modules/
 # next.js
 /.next/
 /out/
+dist/
+/dist/
+public/
 
 # misc
 .DS_Store

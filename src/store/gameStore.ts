@@ -11,11 +11,11 @@ export type Difficulty = "easy" | "medium" | "hard";
 export type BallType = "standard" | "classic" | "modern";
 export type ShootMethod = "button" | "voice";
 export const AVAILABLE_COLORS = [
-  "red-600",
-  "blue-600",
-  "yellow-400",
-  "white",
-  "green-500",
+  "bg-red-600",
+  "bg-blue-600",
+  "bg-yellow-400",
+  "bg-white",
+  "bg-green-500",
 ];
 
 interface GameState {

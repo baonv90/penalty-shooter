@@ -35,7 +35,7 @@ export default function PenaltySpot() {
   const [ballAnim, setBallAnim] = useState({ x: 0, y: 0, scale: 1 });
   const [resultMsg, setResultMsg] = useState("");
 
-  const VOICE_THRESHOLD = 25; // Tùy chỉnh độ nhạy âm thanh tại đây (thường từ 30 - 80)
+  const VOICE_THRESHOLD = 30; // Tùy chỉnh độ nhạy âm thanh tại đây (thường từ 30 - 80)
 
   useEffect(() => {
     let audioContext: AudioContext;
@@ -98,7 +98,7 @@ export default function PenaltySpot() {
   useEffect(() => {
     if (!isShooting && gamePhase === "playing") {
       scaleValue.set(1);
-      const controls = animate(scaleValue, 2.5, {
+      const controls = animate(scaleValue, 3, {
         duration: speed,
         repeat: Infinity,
         repeatType: "mirror",
@@ -209,7 +209,7 @@ export default function PenaltySpot() {
             borderColor: colorValue,
             background: colorValue,
           }}
-          className="absolute w-[60px] h-[60px] rounded-full border-[2px] opacity-40 z-20"
+          className="absolute w-[40px] h-[40px] rounded-full border-[2px] opacity-40 z-20"
         />
       )}
 
@@ -218,7 +218,10 @@ export default function PenaltySpot() {
         <div className="w-5 h-6 bg-[#facc15] rounded-md border-[2px] border-slate-700 shadow-inner z-20" />
         {/* Thân Lego mặc áo */}
         <div
-          className={`w-11 h-10 -mt-1 rounded-lg border-[1.5px] border-slate-700 shadow-md flex items-center justify-center bg-${currentPlayer.jerseyColor}`}
+          className={`w-11 h-10 -mt-1 rounded-lg border-[1.5px] border-slate-700 shadow-md flex items-start justify-center ${currentPlayer.jerseyColor.replace(
+            "text",
+            "bg"
+          )}`}
         >
           <span className="text-white text-xs font-black drop-shadow-md">
             {currentPlayer.name.slice(0, 4).toUpperCase()}

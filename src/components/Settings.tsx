@@ -8,12 +8,6 @@ import {
 } from "../store/gameStore";
 import { initAudio, playWhistle } from "../utils/audio";
 
-export const JerseyIcon = ({ className = "w-6 h-6" }) => (
-  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-    <path d="M14.28 2.37a2.5 2.5 0 00-4.56 0L5 4.5v3.5l2 1.5v10h10v-10l2-1.5V4.5l-4.72-2.13z" />
-  </svg>
-);
-
 export default function Settings() {
   const {
     difficulty,
@@ -117,13 +111,18 @@ export default function Settings() {
                 <div
                   key={"p1" + c}
                   onClick={() => setPlayerColor(playerId, c)}
-                  className={`w-10 h-10 p-1 rounded-full border-2 ${
+                  className={`w-10 h-10 p-1 rounded-full border-2 flex items-center justify-center ${
                     players[playerId].jerseyColor === c
                       ? "border-green-400 scale-125"
                       : "border-transparent"
                   }`}
                 >
-                  <JerseyIcon className={`text-${c}`} />
+                  <div className="flex flex-col items-center">
+                    <div className="w-2.5 h-2 bg-[#facc15] rounded-sm border border-slate-800 z-10" />
+                    <div
+                      className={`w-4 h-3.5 rounded-t-sm border border-slate-800 ${c}`}
+                    />
+                  </div>
                 </div>
               ))}
             </div>

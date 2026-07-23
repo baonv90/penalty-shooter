@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { motion, useMotionValue, animate, useTransform } from "framer-motion";
 import { useGameStore } from "../store/gameStore";
 import { playKick, playCheer, playGroan } from "../utils/audio";

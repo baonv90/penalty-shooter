@@ -243,16 +243,11 @@ export default function PenaltySpot() {
           </>
         )}
       </motion.div>
-
-      {/* UI hướng dẫn sút (Nút bấm hoặc nhận diện Mic) */}
       {shootMethod === "button" ? (
         <button
+          className="absolute w-[100vw] h-[100vh] pointer-events-auto bg-transparent"
           onClick={handleShoot}
-          disabled={isShooting}
-          className="absolute text-nowrap top-[120px] pointer-events-auto px-6 py-2.5 bg-slate-600 text-white font-black text-sm rounded-full hover:bg-slate-500 active:scale-95 disabled:opacity-0 transition-all active:shadow-none"
-        >
-          SÚT (SPACE)
-        </button>
+        />
       ) : (
         <div className="absolute top-[80px] px-4 py-2 bg-slate-900/90 border border-green-500/50 text-green-400 font-bold rounded-full text-xs flex flex-col items-center shadow-lg">
           <div className="flex items-center gap-1.5">

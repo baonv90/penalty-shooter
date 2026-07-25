@@ -99,6 +99,7 @@ export default function Settings() {
         {[0, 1].map((playerId) => (
           <div className="bg-slate-900 p-4 rounded-xl border border-slate-700">
             <input
+              key={playerId}
               type="text"
               value={players[playerId].name}
               onChange={(e) => setPlayerName(playerId, e.target.value)}

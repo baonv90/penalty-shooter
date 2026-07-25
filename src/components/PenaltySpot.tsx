@@ -33,6 +33,8 @@ export default function PenaltySpot() {
   const speed =
     difficulty === "easy" ? 0.8 : difficulty === "medium" ? 0.5 : 0.3;
   const [ballAnim, setBallAnim] = useState({ x: 0, y: 0, scale: 1 });
+  // State quản lý chuyển động của thủ môn
+  const [gkAnim, setGkAnim] = useState({ x: 0 });
   const [resultMsg, setResultMsg] = useState("");
 
   const VOICE_THRESHOLD = 30; // Tùy chỉnh độ nhạy âm thanh tại đây (thường từ 30 - 80)
@@ -115,40 +117,86 @@ export default function PenaltySpot() {
 
     const hitValue = scaleValue.get();
     const rand = Math.random();
-    let result: "goal" | "miss" | "post";
+    let shotQuality: "on_target" | "miss" | "post";
+    const isLiam = players[turn].name.toLowerCase() === "liam";
 
-    if (hitValue <= 1.3) {
-      result = rand < 0.9 ? "goal" : rand < 0.95 ? "post" : "miss";
-    } else if (hitValue <= 1.8) {
-      result = rand < 0.6 ? "goal" : rand < 0.8 ? "post" : "miss";
+    // 1. Xác định chất lượng cú sút dựa vào vòng timing
+    // Chỉnh sửa trong handleShoot():
+    if (hitValue <= (isLiam ? 2.0 : 1.3)) {
+      // Mở rộng ngưỡng từ 1.3 lên 1.6
+      shotQuality = rand < 0.95 ? "on_target" : rand < 0.98 ? "post" : "miss"; // Tăng tỉ lệ trúng lên 95%
+    } else if (hitValue <= (isLiam ? 2.4 : 1.6)) {
+      shotQuality = rand < 0.8 ? "on_target" : rand < 0.9 ? "post" : "miss";
     } else {
-      result = rand < 0.2 ? "goal" : rand < 0.5 ? "post" : "miss";
+      shotQuality = rand < 0.4 ? "on_target" : rand < 0.7 ? "post" : "miss";
     }
 
-    let endY = -120;
+    // 2. Phân loại hướng đi của bóng và hướng đổ người của Thủ môn
+    const directions = ["left", "center", "right"];
+    const ballDir = directions[Math.floor(Math.random() * directions.length)];
+    const gkDir = directions[Math.floor(Math.random() * directions.length)];
+
+    // 3. Quyết định kết quả cuối cùng
+    let finalResult: "goal" | "miss" | "post" | "save" = shotQuality as any;
+    if (shotQuality === "on_target") {
+      const threshold =
+        difficulty === "easy" ? 0.3 : difficulty === "medium" ? 0.5 : 0.7;
+      const gkIsLucky = Math.random() < threshold;
+      if (ballDir === gkDir && gkIsLucky) {
+        finalResult = "save";
+      } else {
+        finalResult = "goal";
+      }
+    }
+
+    // 4. Set tọa độ bay của thủ môn
+    let gkEndX = 0;
+    if (gkDir === "left") gkEndX = -70;
+    else if (gkDir === "right") gkEndX = 70;
+    setGkAnim({ x: gkEndX });
+
+    // 5. Set tọa độ bay của bóng
+    let endY = -100;
     let endX = 0;
 
-    if (result === "goal") {
-      endX = (Math.random() - 0.5) * 200;
-      endY = -240;
-    } else if (result === "post") {
-      endX = Math.random() > 0.5 ? 100 : -100;
+    if (finalResult === "save") {
+      // Bóng bay tới vị trí của thủ môn (vạch vôi ~ -95px)
       endY = -200;
+      endX = gkEndX; // Bóng đập thẳng vào người GK
+    } else if (finalResult === "goal") {
+      endY = -240; // Bay sâu vào lưới
+      if (ballDir === "left") endX = -70 - Math.random() * 20;
+      else if (ballDir === "right") endX = 70 + Math.random() * 20;
+      else endX = (Math.random() - 0.5) * 40;
+    } else if (finalResult === "post") {
+      endY = -200;
+      endX = Math.random() > 0.5 ? 100 : -100; // Trúng cột dọc trái/phải
     } else {
-      endX = Math.random() > 0.5 ? 180 : -180;
       endY = -270;
+      endX = Math.random() > 0.5 ? 180 : -180; // Bay ra ngoài
     }
 
     setBallAnim({ x: endX, y: endY, scale: 0.55 });
 
+    // 6. Hiệu ứng va chạm và kết quả sau khi bóng bay đến đích (450ms)
     setTimeout(() => {
-      if (result === "goal") {
+      if (finalResult === "save") {
+        setResultMsg("🧤 CẢN PHÁ!");
+        playGroan(); // Tiếng khán đài tiếc nuối
+        // Bóng đập người thủ môn nảy ngược lại (phản xạ)
+        setBallAnim((prev) => ({
+          x: prev.x * 0.4,
+          y: prev.y + 60,
+          scale: 0.7,
+        }));
+      } else if (finalResult === "goal") {
         setResultMsg("⚽ VÀOOOOOO!");
         setNetBulge(true);
         playCheer();
-      } else if (result === "post") {
+      } else if (finalResult === "post") {
         setResultMsg("💥 CỘT DỌC!");
         playGroan();
+        // Bóng nảy ra từ cột dọc
         setBallAnim((prev) => ({
           x: prev.x * 1.3,
           y: prev.y + 30,
@@ -159,11 +207,15 @@ export default function PenaltySpot() {
         playGroan();
       }
 
+      // 7. Reset vòng lặp trận đấu
       setTimeout(() => {
         setResultMsg("");
         setNetBulge(false);
         setBallAnim({ x: 0, y: 0, scale: 1 });
-        recordShot(result);
+        setGkAnim({ x: 0 }); // Reset thủ môn về giữa
+
+        // Save tính là một cú sút hỏng (miss) trên bảng tỉ số
+        recordShot(finalResult === "save" ? "miss" : finalResult);
       }, 2300);
     }, 450);
   };
@@ -212,6 +264,19 @@ export default function PenaltySpot() {
           className="absolute w-[40px] h-[40px] rounded-full border-[2px] opacity-40 z-20"
         />
       )}
+
+      {/* Thủ môn (Goalkeeper) - Đứng trên vạch vôi cách bóng -95px */}
+      <motion.div
+        animate={gkAnim}
+        transition={{ duration: 0.35, ease: "easeOut" }} // Thủ môn bay nhanh hơn bóng 1 chút
+        className="absolute -top-[210px] flex flex-col items-center z-20 drop-shadow-lg"
+      >
+        {/* Hình dáng Thủ môn dạng Lego/chữ nhật */}
+        <div className="w-4 h-4 bg-[#facc15] rounded-sm border-[1.5px] border-slate-800 z-20" />
+        <div className="w-9 h-6 -mt-0.5 rounded-t-md border-[1.5px] border-slate-800 shadow-md bg-purple-600 flex justify-center overflow-hidden">
+          <div className="w-4 h-full bg-purple-400/50" />
+        </div>
+      </motion.div>
 
       <div className="absolute top-[40px] flex flex-col items-center z-10 pointer-events-none drop-shadow-xl">
         {/* Đầu Lego */}

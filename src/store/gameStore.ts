@@ -41,6 +41,8 @@ interface GameState {
   setPlayerColor: (playerIndex: number, color: string) => void;
   setPlayerName: (playerIndex: number, name: string) => void;
   resetGame: () => void;
+  graphicsMode: "2d" | "3d";
+  setGraphicsMode: (mode: "2d" | "3d") => void;
 }
 
 const checkWinner = (
@@ -144,4 +146,6 @@ export const useGameStore = create<GameState>((set) => ({
       winner: null,
       players: state.players.map((p) => ({ ...p, shots: [] })),
     })),
+  graphicsMode: "2d",
+  setGraphicsMode: (mode) => set({ graphicsMode: mode }),
 }));

@@ -44,7 +44,7 @@ export default function GameBoard3D() {
       // PHASE 1: Quét mũi tên chọn hướng sút (Góc sút)
       if (phase === "aiming") {
         setAimValue((prev) => {
-          let next = prev + 0.015 * aimDirRef.current;
+          let next = prev + 0.025 * aimDirRef.current;
           if (next >= 1) {
             next = 1;
             aimDirRef.current = -1;
@@ -179,19 +179,13 @@ export default function GameBoard3D() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   });
 
-  // const getRingColor = () => {
-  //   if (scaleValue <= 1.3) return "rgb(34, 197, 94)"; // Green
-  //   if (scaleValue <= 1.8) return "rgb(234, 179, 8)"; // Yellow
-  //   return "rgb(239, 68, 68)"; // Red
-  // };
-
   return (
     <div
       className="flex flex-col items-center justify-center bg-slate-950 text-white select-none relative overflow-hidden"
       onClick={handleInput}
     >
       {/* Frame Game 3D */}
-      <div className="w-[1200px] h-[600px] relative overflow-hidden rounded-2xl shadow-2xl border border-slate-800 bg-slate-900 flex items-center justify-center">
+      <div className="w-[1350px] h-[600px] relative overflow-hidden rounded-2xl shadow-2xl border border-slate-800 bg-slate-900 flex items-center justify-center">
         {/* Truyền gkTargetX để thủ môn thực sự bay người */}
         <Penalty3D
           phase={phase}
@@ -199,26 +193,9 @@ export default function GameBoard3D() {
           scaleValue={scaleValue}
           ballTarget={ballTarget}
           jerseyColor={currentPlayer?.jerseyColor || "bg-red-600"}
+          players={players}
           gkTargetX={gkTargetX}
         />
-
-        {/* OVERLAY: Vòng canh nhịp xuất hiện ở Nhịp 2 (Phase Timing) */}
-        {/* {phase === "timing" && gamePhase === "playing" && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-            <div className="w-4 h-4 bg-white rounded-full opacity-80" />
-            <div
-              className="absolute rounded-full border-[3px]"
-              style={{
-                width: 40 * scaleValue,
-                height: 40 * scaleValue,
-                borderColor: getRingColor(),
-                backgroundColor: getRingColor()
-                  .replace("rgb", "rgba")
-                  .replace(")", ", 0.2)"),
-              }}
-            />
-          </div>
-        )} */}
 
         {/* Thông báo kết quả sút */}
         {resultMsg && (

@@ -61,19 +61,24 @@ export default function Penalty3D({
   useEffect(() => {
     if (!containerRef.current) return;
     const container = containerRef.current;
-    const width = container.clientWidth || 1350;
-    const height = container.clientHeight || 650;
 
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color("#87CEEB");
+    // Get dynamic container dimensions
+    const width = container.clientWidth;
+    const height = container.clientHeight;
 
+    // 1. Perspective Camera aspect ratio calculation
     const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 150);
     camera.position.set(0, 3.5, 9);
     camera.lookAt(0, 1.2, -4);
 
+    // 2. Renderer sizing
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(width, height);
-    renderer.shadowMap.enabled = true;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // High-DPI screen support
+    container.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color("#87CEEB");
 
     // Tối ưu hóa bóng đổ để tránh mỏi GPU TV
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -273,27 +278,33 @@ export default function Penalty3D({
 
     const handleResize = () => {
       if (!containerRef.current) return;
-      const newW = containerRef.current.clientWidth || 1350;
-      const newH = containerRef.current.clientHeight || 650;
-      camera.aspect = newW / newH;
+      const newWidth = container.clientWidth;
+      const newHeight = container.clientHeight;
+
+      // Update Camera aspect ratio & projection matrix
+      camera.aspect = newWidth / newHeight;
       camera.updateProjectionMatrix();
-      renderer.setSize(newW, newH);
+
+      // Update Renderer resolution
+      renderer.setSize(newWidth, newHeight);
     };
+
     window.addEventListener("resize", handleResize);
 
+    // Cleanup
     return () => {
       window.removeEventListener("resize", handleResize);
-      cleanupAnimation();
       renderer.dispose();
-      if (container.contains(renderer.domElement))
+      if (container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
+      }
     };
-  }, []); // Render 1 lần duy nhất, update bằng Hook ref
+  }, []);
 
   return (
     <div
       ref={containerRef}
-      className="w-[1350px] h-[650px] relative overflow-hidden rounded-xl shadow-2xl"
+      className="w-[1350px] h-[80vh] min-h-[500px] relative overflow-hidden rounded-xl shadow-2xl"
     />
   );
 }

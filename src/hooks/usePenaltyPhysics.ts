@@ -97,7 +97,7 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<any>) {
 
       // CẦU THỦ CHẠY ĐÀ VÀ RESET TỐC BIẾN
       if (phase === "shooting" || phase === "result") {
-        if (pGroup.position.z > 2.6) {
+        if (pGroup.position.z > 2.5) {
           pGroup.position.z -= delta * 11;
           pGroup.position.x -= delta * 3.3;
           const runCycle = time * 15;
@@ -107,8 +107,8 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<any>) {
           if (!state.ballStartKick) state.ballStartKick = true;
           kicker.legR.rotation.x = THREE.MathUtils.lerp(
             kicker.legR.rotation.x,
-            -1.2,
-            delta * 25
+            -2,
+            delta * 20
           );
           kicker.legL.rotation.x = 0;
         }
@@ -119,7 +119,7 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<any>) {
         ballGroup.rotation.set(0, 0, 0);
         state.reboundVel.set(0, 0, 0);
 
-        pGroup.position.set(1.5, 0, 4.5);
+        pGroup.position.set(0.5, 0, 4.5);
         kicker.legL.rotation.x = 0;
         kicker.legR.rotation.x = 0;
 

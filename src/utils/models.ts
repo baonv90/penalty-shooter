@@ -1,5 +1,110 @@
 import * as THREE from "three";
 
+export interface StadiumData {
+  stadiumGroup: THREE.Group;
+  bodiesInstanced: THREE.InstancedMesh;
+  headsInstanced: THREE.InstancedMesh;
+  flagsInstanced: THREE.InstancedMesh;
+  fanPositions: Array<{
+    x: number;
+    y: number;
+    z: number;
+    isHome: boolean;
+    phase: number;
+  }>;
+  flagCount: number;
+}
+
+export function createOptimizedStadium(
+  homeColor: string,
+  awayColor: string
+): StadiumData {
+  const stadiumGroup = new THREE.Group();
+  stadiumGroup.position.set(0, 0, -10);
+
+  const fanPositions: Array<{
+    x: number;
+    y: number;
+    z: number;
+    isHome: boolean;
+    phase: number;
+  }> = [];
+
+  // 1. Calculate Bleachers & Fan Positions
+  for (let i = 0; i < 6; i++) {
+    const stepY = i * 1.2;
+    const stepZ = -i * 2.2;
+
+    const row = new THREE.Mesh(
+      new THREE.BoxGeometry(55, stepY + 1.6, 2.2),
+      new THREE.MeshStandardMaterial({ color: 0x334155 })
+    );
+    row.position.set(0, stepY / 2, stepZ);
+    stadiumGroup.add(row);
+
+    for (let j = -25; j <= 25; j += 1.1) {
+      fanPositions.push({
+        x: j,
+        y: stepY + 0.9,
+        z: stepZ,
+        isHome: Math.random() > 0.3,
+        phase: Math.random() * Math.PI * 2, // Random offset so fans don't jump in sync
+      });
+    }
+  }
+
+  const totalFans = fanPositions.length;
+
+  // 2. Supporter Bodies & Heads
+  const bodyGeo = new THREE.CylinderGeometry(0.22, 0.18, 0.7, 8);
+  const bodyMat = new THREE.MeshStandardMaterial();
+  const bodiesInstanced = new THREE.InstancedMesh(bodyGeo, bodyMat, totalFans);
+
+  const headGeo = new THREE.SphereGeometry(0.18, 8, 8);
+  const headMat = new THREE.MeshStandardMaterial({ color: 0xffdbac });
+  const headsInstanced = new THREE.InstancedMesh(headGeo, headMat, totalFans);
+
+  // 3. Flags Geometry & Material (Every ~15th supporter holds a flag)
+  const flagCount = Math.floor(totalFans / 15);
+  const flagGeo = new THREE.PlaneGeometry(1, 0.7);
+  const fcolor = new THREE.Color();
+  fcolor.setHex(homeColor);
+  const flagMat = new THREE.MeshStandardMaterial({
+    color: fcolor,
+    side: THREE.DoubleSide,
+    roughness: 0.6,
+  });
+  const flagsInstanced = new THREE.InstancedMesh(flagGeo, flagMat, flagCount);
+
+  const dummy = new THREE.Object3D();
+  const color = new THREE.Color();
+
+  fanPositions.forEach((pos, idx) => {
+    // Set initial Body transform
+    dummy.position.set(pos.x, pos.y + 0.05, pos.z);
+    dummy.updateMatrix();
+    bodiesInstanced.setMatrixAt(idx, dummy.matrix);
+    color.setHex(parseInt(pos.isHome ? homeColor : awayColor, 16));
+    bodiesInstanced.setColorAt(idx, color);
+
+    // Set initial Head transform
+    dummy.position.set(pos.x, pos.y + 0.55, pos.z);
+    dummy.updateMatrix();
+    headsInstanced.setMatrixAt(idx, dummy.matrix);
+  });
+
+  stadiumGroup.add(bodiesInstanced, headsInstanced, flagsInstanced);
+
+  return {
+    stadiumGroup,
+    bodiesInstanced,
+    headsInstanced,
+    flagsInstanced,
+    fanPositions,
+    flagCount,
+  };
+}
+
 export function createHumanoid(
   skinMat: THREE.Material,
   shirtMat: THREE.Material,
@@ -94,70 +199,6 @@ export function createOptimizedPitch(): THREE.Group {
   pitchGroup.add(stripesInstanced);
 
   return pitchGroup;
-}
-
-export function createOptimizedStadium(
-  homeColor: string,
-  awayColor: string
-): THREE.Group {
-  const stadiumGroup = new THREE.Group();
-  stadiumGroup.position.set(0, 0, -10);
-
-  const fanPositions: { x: number; y: number; z: number; isHome: boolean }[] =
-    [];
-
-  // Tính toán vị trí khán giả & Tạo bậc thang
-  for (let i = 0; i < 6; i++) {
-    const stepY = i * 1.2;
-    const stepZ = -i * 2.2;
-
-    const row = new THREE.Mesh(
-      new THREE.BoxGeometry(55, stepY + 1.6, 2.2),
-      new THREE.MeshStandardMaterial({ color: 0x334155 })
-    );
-    row.position.set(0, stepY / 2, stepZ);
-    stadiumGroup.add(row);
-
-    for (let j = -25; j <= 25; j += 1.1) {
-      fanPositions.push({
-        x: j,
-        y: stepY + 0.9,
-        z: stepZ,
-        isHome: Math.random() > 0.3,
-      });
-    }
-  }
-
-  // [TỐI ƯU TV LAG]: Hàng nghìn khán giả gom lại thành 2 lệnh vẽ (1 Body, 1 Head)
-  const totalFans = fanPositions.length;
-
-  const bodyGeo = new THREE.CylinderGeometry(0.22, 0.18, 0.7, 8);
-  const bodyMat = new THREE.MeshStandardMaterial();
-  const bodiesInstanced = new THREE.InstancedMesh(bodyGeo, bodyMat, totalFans);
-
-  const headGeo = new THREE.SphereGeometry(0.18, 8, 8);
-  const headMat = new THREE.MeshStandardMaterial({ color: 0xffdbac });
-  const headsInstanced = new THREE.InstancedMesh(headGeo, headMat, totalFans);
-
-  const dummy = new THREE.Object3D();
-  const color = new THREE.Color();
-
-  fanPositions.forEach((pos, idx) => {
-    // Body
-    dummy.position.set(pos.x, pos.y + 0.05, pos.z);
-    dummy.updateMatrix();
-    bodiesInstanced.setMatrixAt(idx, dummy.matrix);
-    color.setHex(pos.isHome ? homeColor : awayColor);
-    bodiesInstanced.setColorAt(idx, color);
-
-    // Head
-    dummy.position.set(pos.x, pos.y + 0.55, pos.z);
-    dummy.updateMatrix();
-    headsInstanced.setMatrixAt(idx, dummy.matrix);
-  });
-
-  stadiumGroup.add(bodiesInstanced, headsInstanced);
-  return stadiumGroup;
 }
 
 export function createPitchLines(): THREE.Group {

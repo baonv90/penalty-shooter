@@ -2,6 +2,7 @@ import { useRef } from "react";
 import * as THREE from "three";
 import { getHexColor, createJerseyTexture } from "../utils/textures";
 import { playKick, playCheer, playGroan } from "../utils/audio";
+import { StadiumData } from "../utils/models";
 
 export interface PhysicsElements {
   scene: THREE.Scene;
@@ -19,6 +20,7 @@ export interface PhysicsElements {
   pNumberMat: THREE.MeshBasicMaterial;
   ringMat: THREE.MeshBasicMaterial;
   innerCircleMat: THREE.MeshBasicMaterial;
+  stadiumData: StadiumData;
 }
 
 export function usePenaltyPhysics(propsRef: React.MutableRefObject<any>) {
@@ -200,6 +202,58 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<any>) {
           gk.armR.rotation.z = -2.5;
         }
       }
+      const { stadiumData } = elements;
+      const {
+        bodiesInstanced,
+        headsInstanced,
+        flagsInstanced,
+        fanPositions,
+        flagCount,
+      } = stadiumData;
+
+      const dummy = new THREE.Object3D();
+      const elapsedTime = clock.getElapsedTime();
+
+      // Check if a goal was scored to make fans jump higher & faster
+      const isGoalScored = phase === "result";
+      const jumpSpeed = isGoalScored ? 12 : 5;
+      const jumpHeight = isGoalScored ? 0.25 : 0.08;
+
+      let flagIdx = 0;
+
+      fanPositions.forEach((pos, i) => {
+        // Calculate vertical bounce using Sine wave
+        const jumpOffset =
+          Math.sin(elapsedTime * jumpSpeed + pos.phase) * jumpHeight;
+        const currentY = Math.max(pos.y, pos.y + jumpOffset);
+
+        // Update Body position
+        dummy.position.set(pos.x, currentY + 0.05, pos.z);
+        dummy.rotation.set(0, 0, 0);
+        dummy.scale.set(1, 1, 1);
+        dummy.updateMatrix();
+        bodiesInstanced.setMatrixAt(i, dummy.matrix);
+
+        // Update Head position
+        dummy.position.set(pos.x, currentY + 0.55, pos.z);
+        dummy.updateMatrix();
+        headsInstanced.setMatrixAt(i, dummy.matrix);
+
+        // Update Flags for every ~15th supporter
+        if (i % 15 === 0 && flagIdx < flagCount) {
+          const waveAngle = Math.sin(elapsedTime * 8 + pos.phase) * 0.5; // Waving motion
+          dummy.position.set(pos.x + 0.4, currentY + 0.8, pos.z + 0.2); // Position flag in hand
+          dummy.rotation.set(0, waveAngle, waveAngle * 0.5); // Wave back & forth
+          dummy.updateMatrix();
+          flagsInstanced.setMatrixAt(flagIdx, dummy.matrix);
+          flagIdx++;
+        }
+      });
+
+      // Flag Three.js matrices for rendering update
+      bodiesInstanced.instanceMatrix.needsUpdate = true;
+      headsInstanced.instanceMatrix.needsUpdate = true;
+      flagsInstanced.instanceMatrix.needsUpdate = true;
 
       renderer.render(scene, camera);
     };

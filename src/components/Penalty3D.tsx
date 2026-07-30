@@ -94,12 +94,6 @@ export default function Penalty3D({
 
     // 1. SÂN CỎ & KHÁN ĐÀI (Đã Tối Ưu Tối Đa Bằng InstancedMesh)
     scene.add(createOptimizedPitch());
-    scene.add(
-      createOptimizedStadium(
-        getHexColor(players[0].jerseyColor).toString(),
-        getHexColor(players[1].jerseyColor).toString()
-      )
-    );
     scene.add(createPitchLines());
 
     // 3. UI 3D (Mũi Tên & Vòng Canh Nhịp)
@@ -257,6 +251,9 @@ export default function Penalty3D({
     gkGroup.add(gk.group);
     scene.add(gkGroup);
 
+    const stadiumData = createOptimizedStadium("0xdc2626", "0x2563eb");
+    scene.add(stadiumData.stadiumGroup);
+
     // START HOOK VẬT LÝ
     const cleanupAnimation = startAnimation({
       scene,
@@ -274,6 +271,7 @@ export default function Penalty3D({
       pNumberMat,
       ringMat,
       innerCircleMat,
+      stadiumData,
     });
 
     const handleResize = () => {

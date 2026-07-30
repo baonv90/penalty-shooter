@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import * as THREE from "three";
 import { getHexColor, createJerseyTexture } from "../utils/textures";
+import { playKick, playCheer, playGroan } from "../utils/audio";
 
 export interface PhysicsElements {
   scene: THREE.Scene;
@@ -147,11 +148,14 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<any>) {
             const targetX = ballTarget[0];
 
             if (targetZ <= -6) {
+              playGroan();
               state.reboundVel.set(targetX > 0 ? 4 : -4, -1, -6);
             } else if (targetZ < -4.5) {
+              playCheer();
               state.reboundVel.set((Math.random() - 0.5) * 1.5, -4, 2);
               state.netBulgeTime = 0.2;
             } else if (targetZ > -4.2 && targetZ < -3.8) {
+              playGroan();
               const bounceX = targetX > 0 ? -3 : 3;
               state.reboundVel.set(bounceX + (Math.random() - 0.5) * 3, 4, 8);
             }

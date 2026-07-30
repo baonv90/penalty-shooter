@@ -169,8 +169,8 @@ export const playGroan = () => {
 
   const filter = audioCtx.createBiquadFilter();
   filter.type = "lowpass";
-  filter.frequency.setValueAtTime(400, now);
-  filter.frequency.linearRampToValueAtTime(200, now + 1.2);
+  filter.frequency.setValueAtTime(800, now);
+  filter.frequency.linearRampToValueAtTime(1200, now + 1.2);
 
   const gain = audioCtx.createGain();
   gain.gain.setValueAtTime(0.2, now);

@@ -107,18 +107,18 @@ export function createOptimizedStadium(
     [];
 
   // Tính toán vị trí khán giả & Tạo bậc thang
-  for (let i = 0; i < 5; i++) {
-    const stepY = i * 1.3;
+  for (let i = 0; i < 6; i++) {
+    const stepY = i * 1.2;
     const stepZ = -i * 2.2;
 
     const row = new THREE.Mesh(
-      new THREE.BoxGeometry(60, stepY + 1.8, 2.2),
+      new THREE.BoxGeometry(55, stepY + 1.6, 2.2),
       new THREE.MeshStandardMaterial({ color: 0x334155 })
     );
     row.position.set(0, stepY / 2, stepZ);
     stadiumGroup.add(row);
 
-    for (let j = -20; j <= 20; j += 1.1) {
+    for (let j = -25; j <= 25; j += 1.1) {
       fanPositions.push({
         x: j,
         y: stepY + 0.9,
@@ -171,44 +171,47 @@ export function createPitchLines(): THREE.Group {
   const linesGroup = new THREE.Group();
   linesGroup.position.y = 0.02; // Nâng nhẹ lên mặt cỏ
 
-  const goalLine = new THREE.Mesh(new THREE.PlaneGeometry(30, 0.12), lineMat);
+  const goalLine = new THREE.Mesh(new THREE.PlaneGeometry(35, 0.12), lineMat);
   goalLine.rotation.x = -Math.PI / 2;
   goalLine.position.set(0, 0, -4.04);
 
   const box5m50Front = new THREE.Mesh(
-    new THREE.PlaneGeometry(10.32, 0.12),
+    new THREE.PlaneGeometry(11.4, 0.12),
     lineMat
   );
   box5m50Front.rotation.x = -Math.PI / 2;
-  box5m50Front.position.set(0, 0, -0.1);
-  const box5m50Left = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 4), lineMat);
+  box5m50Front.position.set(0, 0.2, -0.1);
+  const box5m50Left = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.12, 3.3),
+    lineMat
+  );
   box5m50Left.rotation.x = -Math.PI / 2;
-  box5m50Left.position.set(-5.16, 0, -2.1);
+  box5m50Left.position.set(-6, 0, -2.3);
   const box5m50Right = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.12, 4),
+    new THREE.PlaneGeometry(0.12, 3.3),
     lineMat
   );
   box5m50Right.rotation.x = -Math.PI / 2;
-  box5m50Right.position.set(5.16, 0, -2.1);
+  box5m50Right.position.set(6, 0, -2.3);
 
   const box16m50Front = new THREE.Mesh(
-    new THREE.PlaneGeometry(40, 0.12),
+    new THREE.PlaneGeometry(20, 0.12),
     lineMat
   );
   box16m50Front.rotation.x = -Math.PI / 2;
-  box16m50Front.position.set(0, 0, 8.46);
+  box16m50Front.position.set(0, 0, 5.46);
   const box16m50Left = new THREE.Mesh(
     new THREE.PlaneGeometry(0.12, 16.5),
     lineMat
   );
   box16m50Left.rotation.x = -Math.PI / 2;
-  box16m50Left.position.set(-20.16, 0, 4.21);
+  box16m50Left.position.set(-12, 0, 4.21);
   const box16m50Right = new THREE.Mesh(
     new THREE.PlaneGeometry(0.12, 16.5),
     lineMat
   );
   box16m50Right.rotation.x = -Math.PI / 2;
-  box16m50Right.position.set(20.16, 0, 4.21);
+  box16m50Right.position.set(12, 0, 4.21);
 
   const spot = new THREE.Mesh(new THREE.CircleGeometry(0.2, 32), lineMat);
   spot.rotation.x = -Math.PI / 2;

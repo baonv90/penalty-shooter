@@ -18,16 +18,16 @@ export default function App() {
   };
 
   return (
-    <main className="relative w-screen h-screen bg-slate-950 flex flex-col items-center font-sans select-none overflow-hidden">
+    <main className="relative w-screen h-screen px-5 pb-3 bg-slate-950 flex flex-col items-center font-sans select-none overflow-hidden">
       {/* Bảng tỉ số (nằm hoàn toàn ngoài sân bóng để không che gôn) */}
       {gamePhase !== "menu" && (
-        <div className="w-full max-w-3xl px-4 py-4 z-10">
+        <div className="w-full max-w-4xl p-3 z-10">
           <ScoreBoard />
         </div>
       )}
 
       {/* Sân bóng chính */}
-      <div className="relative flex-1 w-full max-w-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.5)] rounded-t-3xl overflow-hidden border-4 border-slate-800 border-b-0 flex flex-col items-center">
+      <div className="relative flex-1 w-full overflow-hidden flex flex-col items-center">
         {gamePhase === "menu" ? (
           <div className="absolute inset-0 z-40 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
             <Settings />

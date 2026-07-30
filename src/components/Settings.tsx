@@ -34,8 +34,8 @@ export default function Settings() {
   };
 
   return (
-    <div className="bg-slate-800 p-6 sm:p-8 rounded-3xl shadow-2xl text-white w-full max-w-xl border border-slate-700 mx-auto my-8">
-      <h1 className="text-3xl font-black mb-6 text-center text-green-400 tracking-wider">
+    <div className="bg-slate-800 p-6 shadow-2xl text-white w-full max-w-xl mx-auto my-5">
+      <h1 className="text-2xl font-black mb-6 text-center text-green-400 tracking-wider">
         PENALTY SHOOTOUT
       </h1>
 
@@ -70,14 +70,14 @@ export default function Settings() {
         </div>
       </div>
 
-      <div className="mb-6">
+      <div className="mb-5">
         <label className="block text-xs font-bold text-gray-400 mb-2 uppercase">
           Cách sút
         </label>
         <div className="flex gap-4">
           <button
             onClick={() => setMethod("button")}
-            className={`flex-1 py-3 rounded-xl border-2 font-bold ${
+            className={`flex-1 py-2 rounded-xl border-2 font-bold ${
               method === "button"
                 ? "bg-green-600 border-green-400"
                 : "bg-slate-900 border-slate-600"
@@ -87,7 +87,7 @@ export default function Settings() {
           </button>
           <button
             onClick={() => setMethod("voice")}
-            className={`flex-1 py-3 rounded-xl border-2 font-bold ${
+            className={`flex-1 py-2 rounded-xl border-2 font-bold ${
               method === "voice"
                 ? "bg-green-600 border-green-400"
                 : "bg-slate-900 border-slate-600"
@@ -98,7 +98,7 @@ export default function Settings() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-8 mb-8">
+      <div className="grid grid-cols-2 gap-8 mb-5">
         {[0, 1].map((playerId) => (
           <div
             key={playerId}
@@ -131,37 +131,37 @@ export default function Settings() {
         ))}
       </div>
 
-      <div className="mb-6">
+      <div className="mb-5">
         <label className="block text-xs font-bold text-gray-400 mb-2 uppercase">
           Đồ hoạ (Graphics)
         </label>
         <div className="flex gap-4">
           <button
             onClick={() => setGraphicsMode("2d")}
-            className={`flex-1 py-2.5 rounded-xl font-bold border-2 ${
+            className={`flex-1 py-2 rounded-xl font-bold border-2 ${
               graphicsMode === "2d"
                 ? "bg-green-600 border-green-400"
                 : "bg-slate-900 border-slate-600 text-slate-400"
             }`}
           >
-            2D Cổ điển
+            2D
           </button>
           <button
             onClick={() => setGraphicsMode("3d")}
-            className={`flex-1 py-2.5 rounded-xl font-bold border-2 ${
+            className={`flex-1 py-2 rounded-xl font-bold border-2 ${
               graphicsMode === "3d"
-                ? "bg-purple-600 border-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.4)]"
+                ? "bg-green-600 border-green-400"
                 : "bg-slate-900 border-slate-600 text-slate-400"
             }`}
           >
-            3D Ban Ngày
+            3D
           </button>
         </div>
       </div>
 
       <button
         onClick={handleStart}
-        className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 rounded-2xl font-black text-2xl tracking-widest transition-transform shadow-lg active:scale-95"
+        className="w-full py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 rounded-2xl font-black text-xl tracking-widest transition-transform shadow-lg active:scale-95"
       >
         VÀO SÂN
       </button>

@@ -294,6 +294,7 @@ export default function Penalty3D({
     // Cleanup
     return () => {
       window.removeEventListener("resize", handleResize);
+      cleanupAnimation();
       renderer.dispose();
       if (container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
@@ -304,7 +305,7 @@ export default function Penalty3D({
   return (
     <div
       ref={containerRef}
-      className="w-[1350px] h-[80vh] min-h-[500px] relative overflow-hidden rounded-xl shadow-2xl"
+      className="w-[1350px] h-[60vh] min-h-[500px] relative overflow-hidden shadow-2xl"
     />
   );
 }

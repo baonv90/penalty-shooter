@@ -5,6 +5,7 @@ import {
   createJerseyTexture,
   createFaceTexture,
   createNetTexture,
+  createSideNetTexture,
 } from "../utils/textures";
 import {
   createHumanoid,
@@ -162,18 +163,62 @@ export default function Penalty3D({
     crossbar.rotation.z = Math.PI / 2;
     crossbar.position.set(0, 2.44, 0);
     crossbar.castShadow = true;
-    const net = new THREE.Mesh(
-      new THREE.BoxGeometry(7.32, 2.44, 1.2),
-      new THREE.MeshStandardMaterial({
-        map: createNetTexture(),
-        transparent: true,
-        opacity: 1,
-        emissive: 0x222222,
-        side: THREE.DoubleSide,
-      })
+
+    // --- HIGH-CONTRAST FULL NET ASSEMBLY (Back, Top, Left, Right) ---
+    const netGroup = new THREE.Group();
+    const netMat = new THREE.MeshStandardMaterial({
+      map: createNetTexture(),
+      transparent: true,
+      opacity: 1,
+      side: THREE.DoubleSide,
+      roughness: 0.1,
+    });
+
+    const sideNetMat = new THREE.MeshStandardMaterial({
+      map: createSideNetTexture(), // Properly scaled texture for side/top panels
+      transparent: true,
+      opacity: 0.85,
+      side: THREE.DoubleSide,
+      roughness: 0.1,
+    });
+
+    const depth = 1.5;
+    const gwidth = 7.32;
+    const gheight = 2.44;
+
+    // Back Net
+    const backNet = new THREE.Mesh(
+      new THREE.PlaneGeometry(gwidth, gheight),
+      netMat
     );
-    net.position.set(0, 1.22, -0.6);
-    goalGroup.add(postL, postR, crossbar, net);
+    backNet.position.set(0, gheight / 2 - 0.1, -depth);
+
+    // Top / Roof Net
+    const topNet = new THREE.Mesh(
+      new THREE.PlaneGeometry(gwidth, depth),
+      sideNetMat
+    );
+    topNet.rotation.x = Math.PI / 2;
+    topNet.position.set(0, gheight, -depth / 2);
+
+    // Left Side Net
+    const leftNet = new THREE.Mesh(
+      new THREE.PlaneGeometry(depth, gheight),
+      sideNetMat
+    );
+    leftNet.rotation.y = Math.PI / 2;
+    leftNet.position.set(-gwidth / 2, gheight / 2, -depth / 3);
+
+    // Right Side Net
+    const rightNet = new THREE.Mesh(
+      new THREE.PlaneGeometry(depth, gheight),
+      sideNetMat
+    );
+    rightNet.rotation.y = Math.PI / 2;
+    rightNet.position.set(gwidth / 2, gheight / 2, -depth / 3);
+
+    netGroup.add(backNet, topNet, leftNet, rightNet);
+    goalGroup.add(postL, postR, crossbar, netGroup);
     scene.add(goalGroup);
 
     // 5. QUẢ BÓNG
@@ -220,7 +265,8 @@ export default function Penalty3D({
       new THREE.MeshStandardMaterial({ color: 0xffffff }),
       0x3b2f2f,
       createFaceTexture(),
-      true
+      true,
+      "95"
     );
 
     const numberPlane = new THREE.Mesh(
@@ -242,7 +288,8 @@ export default function Penalty3D({
       new THREE.MeshStandardMaterial({ color: 0x000000 }),
       0x000000,
       createFaceTexture(),
-      false
+      false,
+      "1"
     );
     gk.armL.rotation.z = 0.5;
     gk.armR.rotation.z = -0.5;
@@ -251,7 +298,10 @@ export default function Penalty3D({
     gkGroup.add(gk.group);
     scene.add(gkGroup);
 
-    const stadiumData = createOptimizedStadium("0xdc2626", "0x2563eb");
+    const stadiumData = createOptimizedStadium(
+      getHexColor(players[0].jerseyColor).toString(),
+      getHexColor(players[1].jerseyColor).toString()
+    );
     scene.add(stadiumData.stadiumGroup);
 
     // START HOOK VẬT LÝ
@@ -264,7 +314,7 @@ export default function Penalty3D({
       gkGroup,
       aimArrowGroup,
       timingRingGroup,
-      net,
+      net: netGroup,
       kicker,
       gk,
       pShirtMat,

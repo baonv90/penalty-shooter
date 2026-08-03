@@ -65,7 +65,7 @@ export function createOptimizedStadium(
   const headsInstanced = new THREE.InstancedMesh(headGeo, headMat, totalFans);
 
   // 3. Flags Geometry & Material (Every ~15th supporter holds a flag)
-  const flagCount = Math.floor(totalFans / 15);
+  const flagCount = Math.floor(totalFans / 10);
   const flagGeo = new THREE.PlaneGeometry(1, 0.7);
   const fcolor = new THREE.Color();
   fcolor.setHex(homeColor);
@@ -84,7 +84,7 @@ export function createOptimizedStadium(
     dummy.position.set(pos.x, pos.y + 0.05, pos.z);
     dummy.updateMatrix();
     bodiesInstanced.setMatrixAt(idx, dummy.matrix);
-    color.setHex(parseInt(pos.isHome ? homeColor : awayColor, 16));
+    color.setHex(parseInt(pos.isHome ? homeColor : awayColor));
     bodiesInstanced.setColorAt(idx, color);
 
     // Set initial Head transform
@@ -105,13 +105,39 @@ export function createOptimizedStadium(
   };
 }
 
+// Generates a 2D Canvas texture with the player number
+export function createNumberTexture(
+  numberStr: string,
+  textColor = "#ffffff"
+): THREE.CanvasTexture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext("2d")!;
+
+  // Transparent background so only the number renders
+  ctx.clearRect(0, 0, 256, 256);
+
+  // Draw Number
+  ctx.fillStyle = textColor;
+  ctx.font = "bold 180px Arial";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(numberStr, 128, 128);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
+
 export function createHumanoid(
   skinMat: THREE.Material,
   shirtMat: THREE.Material,
   shortsMat: THREE.Material,
   hairColor: number,
   faceTex: THREE.Texture,
-  isKicker: boolean
+  isKicker: boolean,
+  shirtNumber: string = "10"
 ) {
   const group = new THREE.Group();
 
@@ -145,6 +171,28 @@ export function createHumanoid(
   body.position.set(0, 0.75, 0);
   body.castShadow = true;
   body.receiveShadow = true;
+
+  // --- ADD SHIRT NUMBER TO THE BACK ---
+  const numTex = createNumberTexture(shirtNumber, "#ffffff");
+  const numMat = new THREE.MeshBasicMaterial({
+    map: numTex,
+    transparent: true,
+    side: THREE.DoubleSide, // 1. Render both sides so rotation/orientation won't hide it
+    polygonOffset: true, // 2. Prevent Z-fighting with the shirt surface
+    polygonOffsetFactor: -1,
+    polygonOffsetUnits: -1,
+  });
+
+  const numberMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.32, 0.32),
+    numMat
+  );
+
+  // 3. Pushed slightly further out on the Z-axis (Z = 0.23) so it sits outside the cylinder
+  numberMesh.position.set(0.045, 0.05, 0.23);
+  numberMesh.rotation.y = 0.25;
+
+  body.add(numberMesh);
 
   const armGeo = new THREE.CylinderGeometry(0.06, 0.05, 0.5, 16);
   const armL = new THREE.Mesh(armGeo, skinMat);

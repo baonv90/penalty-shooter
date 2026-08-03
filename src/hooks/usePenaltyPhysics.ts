@@ -240,7 +240,7 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<any>) {
         headsInstanced.setMatrixAt(i, dummy.matrix);
 
         // Update Flags for every ~15th supporter
-        if (i % 15 === 0 && flagIdx < flagCount) {
+        if (i % 10 === 0 && flagIdx < flagCount) {
           const waveAngle = Math.sin(elapsedTime * 8 + pos.phase) * 0.5; // Waving motion
           dummy.position.set(pos.x + 0.4, currentY + 0.8, pos.z + 0.2); // Position flag in hand
           dummy.rotation.set(0, waveAngle, waveAngle * 0.5); // Wave back & forth

@@ -57,22 +57,39 @@ export function createFaceTexture(): THREE.CanvasTexture {
 
 export function createNetTexture(): THREE.CanvasTexture {
   const canvas = document.createElement("canvas");
-  canvas.width = 512;
-  canvas.height = 512;
+  canvas.width = 128;
+  canvas.height = 128;
   const ctx = canvas.getContext("2d")!;
-  ctx.fillStyle = "rgba(255,255,255,0)";
-  ctx.fillRect(0, 0, 512, 512);
+
+  // Clear canvas (transparent background)
+  ctx.clearRect(0, 0, 128, 128);
+
+  // Thicker stroke for high visibility/contrast
   ctx.strokeStyle = "#ffffff";
-  ctx.lineWidth = 14;
-  ctx.strokeRect(0, 0, 512, 512);
-  ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.lineTo(512, 512);
-  ctx.stroke();
+  ctx.lineWidth = 12;
+  ctx.strokeRect(0, 0, 128, 128);
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.wrapS = THREE.RepeatWrapping;
   tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(16, 8);
+  tex.repeat.set(24, 12); // Crisp diamond/grid density
+  return tex;
+}
+
+export function createSideNetTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 128;
+  canvas.height = 128;
+  const ctx = canvas.getContext("2d")!;
+  ctx.clearRect(0, 0, 128, 128);
+
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 32;
+  ctx.strokeRect(0, 0, 128, 128);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(5, 12); // Reduced horizontal repeat to fit depth (1.5m)
   return tex;
 }

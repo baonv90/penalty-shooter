@@ -5,6 +5,7 @@ import {
   BallType,
   ShootMethod,
   AVAILABLE_COLORS,
+  GKType,
 } from "../store/gameStore";
 import { initAudio, playWhistle } from "../utils/audio";
 
@@ -18,6 +19,7 @@ export default function Settings() {
     startGame,
     setPlayerColor,
     setPlayerName,
+    setGKType,
     graphicsMode,
     setGraphicsMode,
   } = useGameStore();
@@ -31,6 +33,10 @@ export default function Settings() {
     playWhistle();
     updateSettings(diff, ball, method);
     startGame();
+  };
+
+  const handleGkChange = (playerId: number, type: GKType) => {
+    setGKType(playerId, type);
   };
 
   return (
@@ -126,6 +132,64 @@ export default function Settings() {
                   <div className={`w-6 h-6 rounded-full ${c}`} />
                 </div>
               ))}
+            </div>
+            <div className="p-4 bg-slate-800 rounded-lg">
+              <div className="flex gap-4">
+                {/* Human GK */}
+                <button
+                  onClick={() => handleGkChange(playerId, "human")}
+                  className={`p-2 bg-blue-500 rounded ${
+                    players[playerId].gkType === "human"
+                      ? "border-2 border-green-400"
+                      : ""
+                  }`}
+                >
+                  <svg width="40" height="40" viewBox="0 0 100 100">
+                    <circle cx="50" cy="30" r="20" fill="#ffdbac" />
+                    <rect x="30" y="50" width="40" height="50" fill="#10b981" />
+                  </svg>
+                  <p className="text-white text-xs mt-1">Human</p>
+                </button>
+
+                {/* Bear GK */}
+                <button
+                  onClick={() => handleGkChange(playerId, "bear")}
+                  className={`p-2 bg-amber-700 rounded  ${
+                    players[playerId].gkType === "bear"
+                      ? "border-2 border-green-400"
+                      : ""
+                  }`}
+                >
+                  <svg width="40" height="40" viewBox="0 0 100 100">
+                    <circle cx="30" cy="20" r="10" fill="#5c4033" />{" "}
+                    {/* Tai trái */}
+                    <circle cx="70" cy="20" r="10" fill="#5c4033" />{" "}
+                    {/* Tai phải */}
+                    <circle cx="50" cy="40" r="25" fill="#8b5a2b" /> {/* Đầu */}
+                    <rect x="20" y="60" width="60" height="40" fill="#8b5a2b" />
+                    {/* Thân to */}
+                  </svg>
+                  <p className="text-white text-xs mt-1">Bear</p>
+                </button>
+
+                {/* Skunk GK */}
+                <button
+                  onClick={() => handleGkChange(playerId, "skunk")}
+                  className={`p-2 bg-gray-600 rounded  ${
+                    players[playerId].gkType === "skunk"
+                      ? "border-2 border-green-400"
+                      : ""
+                  }`}
+                >
+                  <svg width="40" height="40" viewBox="0 0 100 100">
+                    <circle cx="50" cy="35" r="15" fill="#222" />
+                    <rect x="45" y="20" width="10" height="30" fill="#fff" />
+                    {/* Vệt trắng */}
+                    <rect x="35" y="50" width="30" height="30" fill="#222" />
+                  </svg>
+                  <p className="text-white text-xs mt-1">Skunk</p>
+                </button>
+              </div>
             </div>
           </div>
         ))}

@@ -5,11 +5,13 @@ export type Player = {
   id: number;
   name: string;
   jerseyColor: string;
+  gkType: GKType;
   shots: ShotResult[];
 };
 export type Difficulty = "easy" | "medium" | "hard";
 export type BallType = "standard" | "classic" | "modern";
 export type ShootMethod = "button" | "voice";
+export type GKType = "human" | "bear" | "skunk";
 export const AVAILABLE_COLORS = [
   "bg-red-600",
   "bg-blue-600",
@@ -40,6 +42,7 @@ interface GameState {
   startGame: () => void;
   setPlayerColor: (playerIndex: number, color: string) => void;
   setPlayerName: (playerIndex: number, name: string) => void;
+  setGKType: (playerIndex: number, type: GKType) => void;
   resetGame: () => void;
   graphicsMode: "2d" | "3d";
   setGraphicsMode: (mode: "2d" | "3d") => void;
@@ -68,8 +71,20 @@ const checkWinner = (
 
 export const useGameStore = create<GameState>((set) => ({
   players: [
-    { id: 1, name: "Liam", jerseyColor: AVAILABLE_COLORS[0], shots: [] },
-    { id: 2, name: "Bao", jerseyColor: AVAILABLE_COLORS[1], shots: [] },
+    {
+      id: 1,
+      name: "Liam",
+      jerseyColor: AVAILABLE_COLORS[0],
+      shots: [],
+      gkType: "human",
+    },
+    {
+      id: 2,
+      name: "Bao",
+      jerseyColor: AVAILABLE_COLORS[1],
+      shots: [],
+      gkType: "human",
+    },
   ],
   turn: 0,
   difficulty: "medium",
@@ -139,6 +154,12 @@ export const useGameStore = create<GameState>((set) => ({
       return { players: newPlayers };
     }),
 
+  setGKType: (playerIndex: number, type: GKType) =>
+    set((state) => {
+      const newPlayers = [...state.players];
+      newPlayers[playerIndex].gkType = type;
+      return { players: newPlayers };
+    }),
   resetGame: () =>
     set((state) => ({
       gamePhase: "menu",
@@ -146,6 +167,6 @@ export const useGameStore = create<GameState>((set) => ({
       winner: null,
       players: state.players.map((p) => ({ ...p, shots: [] })),
     })),
-  graphicsMode: "2d",
+  graphicsMode: "3d",
   setGraphicsMode: (mode) => set({ graphicsMode: mode }),
 }));

@@ -13,8 +13,9 @@ import {
   createOptimizedStadium,
   createPitchLines,
 } from "../utils/models";
+import { createGoalkeeper } from "../utils/goalkeepers"; // <-- Import mới
 import { usePenaltyPhysics } from "../hooks/usePenaltyPhysics";
-import { Player } from "../store/gameStore";
+import { GKType, Player } from "../store/gameStore";
 
 export interface Penalty3DProps {
   phase: "aiming" | "timing" | "power" | "shooting" | "result";
@@ -24,6 +25,7 @@ export interface Penalty3DProps {
   jerseyColor?: string;
   players: Player[];
   gkTargetX?: number;
+  gkType?: GKType;
 }
 
 export default function Penalty3D({
@@ -34,6 +36,7 @@ export default function Penalty3D({
   jerseyColor = "bg-red-600",
   players,
   gkTargetX = 0,
+  gkType,
 }: Penalty3DProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -44,6 +47,7 @@ export default function Penalty3D({
     scaleValue,
     ballTarget,
     jerseyColor,
+    gkType,
     gkTargetX,
   });
   useEffect(() => {
@@ -53,9 +57,10 @@ export default function Penalty3D({
       scaleValue,
       ballTarget,
       jerseyColor,
+      gkType,
       gkTargetX,
     };
-  }, [phase, aimValue, scaleValue, ballTarget, jerseyColor, gkTargetX]);
+  }, [phase, aimValue, scaleValue, ballTarget, gkType, jerseyColor, gkTargetX]);
 
   const { startAnimation } = usePenaltyPhysics(propsRef);
 
@@ -245,6 +250,30 @@ export default function Penalty3D({
 
     scene.add(ballGroup);
 
+    // --- HIỆU ỨNG KHÓI CHO CHỒN (SKUNK) ---
+    const smokeGroup = new THREE.Group();
+    if (propsRef.current.gkType === "skunk") {
+      const smokeMat = new THREE.MeshBasicMaterial({
+        color: 0x888888,
+        transparent: true,
+        opacity: 0.9,
+      });
+      // Tạo 5 khối cầu khói lơ lửng quanh vùng timing ring
+      for (let i = 0; i < 10; i++) {
+        const smoke = new THREE.Mesh(new THREE.SphereGeometry(0.6), smokeMat);
+        smoke.position.set(
+          (Math.random() - 0.5) * 1.5,
+          (Math.random() - 0.5) * 2.5,
+          (Math.random() - 0.5) * 1.5
+        );
+        smokeGroup.add(smoke);
+      }
+      // Gắn khói vào đúng vị trí vòng canh nhịp
+      smokeGroup.position.copy(timingRingGroup.position);
+      smokeGroup.position.z -= 0; // Dịch ra sau xíu
+      scene.add(smokeGroup);
+    }
+
     // 6. CẦU THỦ VÀ THỦ MÔN
     const skinMat = new THREE.MeshStandardMaterial({
       color: 0xffdbac,
@@ -282,21 +311,38 @@ export default function Penalty3D({
     pGroup.add(kicker.group);
     scene.add(pGroup);
 
-    const gk = createHumanoid(
-      skinMat,
-      new THREE.MeshStandardMaterial({ color: 0x10b981 }),
-      new THREE.MeshStandardMaterial({ color: 0x000000 }),
-      0x000000,
-      createFaceTexture(),
-      false,
-      "1"
-    );
-    gk.armL.rotation.z = 0.5;
-    gk.armR.rotation.z = -0.5;
+    // --- 6. KHỞI TẠO THỦ MÔN MỚI ---
+    const gkData = createGoalkeeper(propsRef.current.gkType);
+
+    // Áp dụng scale đặc trưng của GK (Gấu to, Chồn nhỏ)
+    gkData.group.scale.set(gkData.scale, gkData.scale, gkData.scale);
+
+    // Giơ tay nếu là Human
+    if (gkData.armL && gkData.armR) {
+      gkData.armL.rotation.z = 0.5;
+      gkData.armR.rotation.z = -0.5;
+    }
+
     const gkGroup = new THREE.Group();
     gkGroup.position.set(0, 0, -3.9);
-    gkGroup.add(gk.group);
+    gkGroup.add(gkData.group);
     scene.add(gkGroup);
+
+    // const gk = createHumanoid(
+    //   skinMat,
+    //   new THREE.MeshStandardMaterial({ color: 0x10b981 }),
+    //   new THREE.MeshStandardMaterial({ color: 0x000000 }),
+    //   0x000000,
+    //   createFaceTexture(),
+    //   false,
+    //   "1"
+    // );
+    // gk.armL.rotation.z = 0.5;
+    // gk.armR.rotation.z = -0.5;
+    // const gkGroup = new THREE.Group();
+    // gkGroup.position.set(0, 0, -3.9);
+    // gkGroup.add(gk.group);
+    // scene.add(gkGroup);
 
     const stadiumData = createOptimizedStadium(
       getHexColor(players[0].jerseyColor).toString(),
@@ -311,12 +357,13 @@ export default function Penalty3D({
       renderer,
       ballGroup,
       pGroup,
-      gkGroup,
       aimArrowGroup,
       timingRingGroup,
       net: netGroup,
       kicker,
-      gk,
+      gkData,
+      gkGroup,
+      smokeGroup,
       pShirtMat,
       pNumberMat,
       ringMat,
@@ -348,7 +395,7 @@ export default function Penalty3D({
         container.removeChild(renderer.domElement);
       }
     };
-  }, []);
+  }, [gkType]);
 
   return (
     <div

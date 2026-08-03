@@ -8,6 +8,9 @@ export default function GameBoard3D() {
 
   const currentPlayer = players[turn];
 
+  const opponentIndex = (turn + 1) % players.length;
+  const currentGK = players[opponentIndex];
+
   // Các phase: aiming (chọn hướng) -> timing (chọn lực/độ chuẩn) -> shooting -> result
   const [phase, setPhase] = useState<
     "aiming" | "timing" | "shooting" | "result"
@@ -16,7 +19,7 @@ export default function GameBoard3D() {
   // Nhịp 1: Chọn hướng sút (0 đến 1)
   const [aimValue, setAimValue] = useState(0.5);
   // Nhịp 2: Vòng canh nhịp chất lượng (1 đến 3)
-  const [scaleValue, setScaleValue] = useState(1);
+  const [scaleValue, setScaleValue] = useState(3);
 
   const [resultMsg, setResultMsg] = useState("");
   const [ballTarget, setBallTarget] = useState<[number, number, number]>([
@@ -87,7 +90,7 @@ export default function GameBoard3D() {
     // NHỊP 1: BẤM LẦN 1 -> CHỐT HƯỚNG SÚT
     if (phase === "aiming") {
       // Chuyển aimValue (0 -> 1) thành tọa độ ngang khung thành X (-3.2m đến +3.2m)
-      chosenTargetX.current = -3.2 + aimValue * 6.4;
+      chosenTargetX.current = -3.3 + aimValue * 6.6;
       setPhase("timing"); // Chuyển sang nhịp 2
     }
     // NHỊP 2: BẤM LẦN 2 -> CHỐT CHẤT LƯỢNG CÚ SÚT & THỰC HIỆN SÚT
@@ -102,37 +105,64 @@ export default function GameBoard3D() {
       const isLiam = currentPlayer?.name.toLowerCase() === "liam";
 
       // Đánh giá chất lượng cú sút từ Vòng Nhịp
-      if (hitValue <= (isLiam ? 2.0 : 1.3)) {
-        // Vùng Xanh: 95% Sút chính xác vào đúng hướng chọn
-        shotQuality = rand < 0.95 ? "on_target" : rand < 0.98 ? "post" : "miss";
+      if (hitValue <= (isLiam ? 1.8 : 1.3)) {
+        // Vùng Xanh: 90% Sút chính xác vào đúng hướng chọn
+        shotQuality = rand < 0.9 ? "on_target" : rand < 0.95 ? "post" : "miss";
       } else if (hitValue <= (isLiam ? 2.4 : 1.6)) {
-        // Vùng Vàng: 80% Chính xác
-        shotQuality = rand < 0.8 ? "on_target" : rand < 0.9 ? "post" : "miss";
+        // Vùng Vàng: 70% Chính xác
+        shotQuality = rand < 0.7 ? "on_target" : rand < 0.8 ? "post" : "miss";
       } else {
         // Vùng Đỏ: Chỉ 40% Chính xác, dễ trượt
-        shotQuality = rand < 0.4 ? "on_target" : rand < 0.7 ? "post" : "miss";
+        shotQuality = rand < 0.3 ? "on_target" : rand < 0.5 ? "post" : "miss";
       }
 
-      // THỦ MÔN PHÁN ĐOÁN HƯỚNG (Trái: -2.8, Giữa: 0, Phải: 2.8)
-      const gkChoices = [-2.8, 0, 2.8];
-      const selectedGkX =
-        gkChoices[Math.floor(Math.random() * gkChoices.length)];
+      // --- DYNAMIC GOALKEEPER TRAIT LOGIC ---
+      const gkType = currentGK?.gkType || "human";
+      const gkModifiers = {
+        human: { speed: 1.0, reachRadius: 1.5, baseSaveBonus: 0.0 },
+        bear: { speed: 0.5, reachRadius: 1.8, baseSaveBonus: 0.25 },
+        skunk: { speed: 1.5, reachRadius: 1.2, baseSaveBonus: 0.15 },
+      };
+      const gkTrait = gkModifiers[gkType];
+
+      // AI Position Choice
+      let selectedGkX: number;
+      if (gkType === "bear") {
+        selectedGkX =
+          Math.random() < 0.5 ? 0 : Math.random() < 0.5 ? -2.2 : 2.2;
+      } else {
+        const gkChoices = [-2.8, 0, 2.8];
+        selectedGkX = gkChoices[Math.floor(Math.random() * gkChoices.length)];
+      }
       setGkTargetX(selectedGkX);
 
-      // XÁC ĐỊNH KẾT QUẢ KHI SÚT VÀO HƯỚNG ĐÃ CHỌN
+      // RESULT CALCULATION
       const targetX = chosenTargetX.current;
       let finalResult: "goal" | "miss" | "post" | "save" = shotQuality as any;
 
       if (shotQuality === "on_target") {
-        // Kiểm tra xem Thủ môn có cản phá được không
-        const isGkNear = Math.abs(selectedGkX - targetX) < 1.3;
-        const gkSaveProbability =
-          difficulty === "easy" ? 0.3 : difficulty === "medium" ? 0.5 : 0.7;
+        const distanceToShot = Math.abs(selectedGkX - targetX);
+        const isWithinReach = distanceToShot <= gkTrait.reachRadius;
 
-        if (isGkNear && Math.random() < gkSaveProbability) {
-          finalResult = "save"; // Thủ môn đẩy bóng
+        // Base probability scaled by difficulty
+        let baseSaveProbability =
+          difficulty === "easy" ? 0.5 : difficulty === "medium" ? 0.75 : 0.9;
+
+        baseSaveProbability += gkTrait.baseSaveBonus;
+
+        // Speed attenuation: Slower GKs lose efficiency quickly on distant shots
+        const speedEfficiency = Math.max(
+          0,
+          1 - distanceToShot / (2.5 * gkTrait.speed)
+        );
+        const finalSaveProbability = isWithinReach
+          ? baseSaveProbability * speedEfficiency
+          : 0.0;
+
+        if (Math.random() < finalSaveProbability) {
+          finalResult = "save";
         } else {
-          finalResult = "goal"; // Vào lưới!
+          finalResult = "goal";
         }
       }
 
@@ -194,6 +224,7 @@ export default function GameBoard3D() {
           ballTarget={ballTarget}
           jerseyColor={currentPlayer?.jerseyColor || "bg-red-600"}
           players={players}
+          gkType={currentGK?.gkType || "human"}
           gkTargetX={gkTargetX}
         />
 

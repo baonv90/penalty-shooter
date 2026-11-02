@@ -1,230 +1,130 @@
 import * as THREE from "three";
 import { createFaceTexture } from "./textures";
-import { createHumanoid } from "./models"; // Import hàm cũ của bạn
-import { GKType } from "../store/gameStore";
+import { createHumanoid } from "./models";
+import type { GKType } from "../store/gameStore";
 
 export interface GKData {
   group: THREE.Group;
   scale: number;
   speedMultiplier: number;
-  armL?: THREE.Mesh;
-  armR?: THREE.Mesh;
+  diveHeight?: number;
+  armL?: THREE.Object3D;
+  armR?: THREE.Object3D;
+  rig?: {
+    head: THREE.Group;
+    legL: THREE.Group;
+    legR: THREE.Group;
+    tail?: THREE.Group;
+    idleSpeed: number;
+  };
 }
 
-export function createGoalkeeper(type: GKType): GKData {
-  switch (type) {
-    case "bear":
-      return createBearGK();
-    case "skunk":
-      return createSkunkGK();
-    case "human":
-    default:
-      return createHumanGK();
+export function createGoalkeeper(type: GKType = "human"): GKData {
+  return type === "human" ? createHumanGK() : createAnimalGK(type);
+}
+
+/** Shared rounded parts and shoulder/hip pivots keep both animal rigs consistent. */
+function createAnimalGK(type: "bear" | "skunk"): GKData {
+  const bear = type === "bear";
+  const group = new THREE.Group();
+  group.name = `${type}-keeper`;
+  const fur = new THREE.MeshStandardMaterial({ color: bear ? 0x8b5536 : 0x28303f, roughness: 0.85 });
+  const cream = new THREE.MeshStandardMaterial({ color: bear ? 0xf1cf99 : 0xf4f1e8, roughness: 0.85 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x151b25, roughness: 0.5 });
+  const pink = new THREE.MeshStandardMaterial({ color: 0xda8a91, roughness: 0.7 });
+  const ball = new THREE.SphereGeometry(1, 16, 12);
+  const ellipsoid = (parent: THREE.Object3D, material: THREE.Material,
+    position: [number, number, number], scale: [number, number, number]) => {
+    const mesh = new THREE.Mesh(ball, material);
+    mesh.position.set(...position);
+    mesh.scale.set(...scale);
+    mesh.castShadow = true;
+    parent.add(mesh);
+    return mesh;
+  };
+  const width = bear ? 0.46 : 0.25;
+  const shoulderY = bear ? 1.03 : 0.85;
+  ellipsoid(group, fur, [0, bear ? 0.83 : 0.65, 0], [width, bear ? 0.54 : 0.4, bear ? 0.3 : 0.22]);
+  ellipsoid(group, cream, [0, bear ? 0.81 : 0.64, bear ? 0.25 : 0.18],
+    [bear ? 0.29 : 0.14, bear ? 0.35 : 0.25, 0.07]);
+
+  const head = new THREE.Group();
+  head.name = "head-pivot";
+  head.position.set(0, bear ? 1.43 : 1.12, 0.02);
+  group.add(head);
+  ellipsoid(head, fur, [0, 0.13, 0], [bear ? 0.33 : 0.25, bear ? 0.31 : 0.24, bear ? 0.28 : 0.22]);
+  for (const side of [-1, 1]) {
+    ellipsoid(head, fur, [side * (bear ? 0.25 : 0.19), bear ? 0.37 : 0.33, 0], [0.11, bear ? 0.12 : 0.15, 0.07]);
+    ellipsoid(head, bear ? cream : pink, [side * (bear ? 0.25 : 0.19), bear ? 0.37 : 0.33, 0.055], [0.06, 0.075, 0.025]);
+    ellipsoid(head, dark, [side * (bear ? 0.12 : 0.095), 0.19, bear ? 0.25 : 0.2], [0.038, 0.046, 0.025]);
+    ellipsoid(head, cream, [side * (bear ? 0.12 : 0.095) - 0.01, 0.205, bear ? 0.273 : 0.223], [0.012, 0.015, 0.008]);
+  }
+  ellipsoid(head, cream, [0, 0.055, bear ? 0.25 : 0.2], [bear ? 0.17 : 0.13, 0.11, bear ? 0.13 : 0.12]);
+  ellipsoid(head, bear ? dark : pink, [0, 0.095, bear ? 0.365 : 0.31], [0.065, 0.045, 0.035]);
+  if (!bear) {
+    ellipsoid(head, cream, [0, 0.29, 0.15], [0.065, 0.14, 0.08]);
+    ellipsoid(group, cream, [0, 0.75, -0.19], [0.07, 0.3, 0.06]);
+  }
+
+  const limb = (name: string, x: number, y: number, arm: boolean) => {
+    const pivot = new THREE.Group();
+    pivot.name = name;
+    pivot.position.set(x, y, arm && bear ? 0.15 : 0);
+    group.add(pivot);
+    const length = arm ? (bear ? 0.48 : 0.3) : 0.28;
+    const radius = bear ? (arm ? 0.15 : 0.115) : 0.075;
+    ellipsoid(pivot, fur, [0, -length / 2, 0], [radius, length / 2 + radius * 0.5, radius]);
+    const paw = ellipsoid(pivot, arm ? cream : dark,
+      [0, -length, arm && bear ? 0.12 : 0.045],
+      [radius * (arm && bear ? 1.5 : 1.18), radius * 0.95, radius * 1.3]);
+    paw.name = arm ? "paw" : "foot";
+    return pivot;
+  };
+  const armL = limb("left-shoulder", -width * 1.12, shoulderY, true);
+  const armR = limb("right-shoulder", width * 1.12, shoulderY, true);
+  const legL = limb("left-hip", -width * 0.53, 0.38, false);
+  const legR = limb("right-hip", width * 0.53, 0.38, false);
+  let tail: THREE.Group | undefined;
+  if (!bear) {
+    tail = new THREE.Group();
+    tail.name = "tail-pivot";
+    tail.position.set(0, 0.42, -0.16);
+    group.add(tail);
+    ellipsoid(tail, fur, [0, 0.32, -0.32], [0.23, 0.49, 0.2]).rotation.x = -0.55;
+    ellipsoid(tail, cream, [0, 0.37, -0.48], [0.085, 0.44, 0.055]).rotation.x = -0.55;
+  } else {
+    ellipsoid(group, fur, [0, 0.48, -0.3], [0.12, 0.12, 0.12]);
+  }
+  return { group, armL, armR, scale: bear ? 1.45 : 0.95,
+    speedMultiplier: bear ? 0.6 : 2.7,
+    diveHeight: bear ? 0.55 : 0.95,
+    rig: { head, legL, legR, tail, idleSpeed: bear ? 2.5 : 5 } };
+}
+
+/** Absolute idle poses and damped dive poses avoid drift and abrupt limb snaps. */
+export function animateGoalkeeper(data: GKData, time: number, delta: number, diving: boolean, x: number) {
+  const blend = 1 - Math.exp(-delta * 12 * Math.max(1, data.speedMultiplier));
+  const amount = diving ? Math.min(Math.abs(x) / 1.8, 1) : 0;
+  const idle = Math.sin(time * (data.rig?.idleSpeed ?? 3));
+  const direction = x > 0 ? -1 : 1;
+  data.group.rotation.z = THREE.MathUtils.lerp(data.group.rotation.z, direction * amount * 1.15, blend);
+  data.group.position.y = THREE.MathUtils.lerp(data.group.position.y,
+    diving ? Math.sin(amount * Math.PI * 0.7) * (data.diveHeight ?? 0.55) : (idle + 1) * 0.012, blend);
+  const armAngle = (data.rig ? 0.7 : 0.5) + amount * 1.8 + (diving ? 0 : idle * 0.07);
+  const armDirection = data.rig ? -1 : 1;
+  if (data.armL) data.armL.rotation.z = THREE.MathUtils.lerp(data.armL.rotation.z, armDirection * armAngle, blend);
+  if (data.armR) data.armR.rotation.z = THREE.MathUtils.lerp(data.armR.rotation.z, -armDirection * armAngle, blend);
+  if (data.rig) {
+    data.rig.head.rotation.z = -data.group.rotation.z * 0.18;
+    data.rig.head.rotation.y = diving ? 0 : Math.sin(time * 0.8) * 0.09;
+    data.rig.legL.rotation.x = diving ? -amount * 0.4 : idle * 0.04;
+    data.rig.legR.rotation.x = diving ? amount * 0.3 : -idle * 0.04;
+    if (data.rig.tail) {
+      data.rig.tail.rotation.z = Math.sin(time * 4) * (diving ? 0.1 : 0.18);
+      data.rig.tail.rotation.x = -amount * 0.3;
+    }
   }
 }
-
-function createBearGK(): GKData {
-  const group = new THREE.Group();
-
-  // Màu lông nâu ấm và màu mõm/bụng nhạt hơn
-  const furMat = new THREE.MeshStandardMaterial({
-    color: 0x8b5a2b,
-    roughness: 0.9,
-  });
-  const lightFurMat = new THREE.MeshStandardMaterial({
-    color: 0xd2b48c,
-    roughness: 0.9,
-  });
-  const blackMat = new THREE.MeshStandardMaterial({
-    color: 0x111111,
-    roughness: 0.5,
-  });
-
-  // 1. THÂN HÌNH (Bụng bự)
-  // Sử dụng CapsuleGeometry cho thân hình mập mạp, bo tròn
-  const body = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.4, 0.5, 18, 18),
-    furMat
-  );
-  body.position.set(0, 0.8, 0);
-  body.castShadow = true;
-
-  const belly = new THREE.Mesh(
-    new THREE.SphereGeometry(0.55, 20, 20),
-    lightFurMat
-  );
-  belly.position.set(0, 0.75, 0.2); // Bụng nhô ra phía trước
-
-  // 2. ĐẦU VÀ MẶT
-  const headGroup = new THREE.Group();
-  headGroup.position.set(0, 1.55, 0);
-
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 16), furMat);
-
-  // Tai gấu (hai nửa hình cầu dẹt)
-  const earGeo = new THREE.SphereGeometry(0.1, 16, 16);
-  const earL = new THREE.Mesh(earGeo, furMat);
-  earL.position.set(-0.25, 0.2, 0);
-  const earR = new THREE.Mesh(earGeo, furMat);
-  earR.position.set(0.25, 0.2, 0);
-
-  // Mõm nhô ra
-  const snout = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.1, 0.15, 0.15, 16),
-    lightFurMat
-  );
-  snout.rotation.x = Math.PI / 2;
-  snout.position.set(0, -0.05, 0.28);
-
-  // Mũi đen nhỏ
-  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), blackMat);
-  nose.position.set(0, 0.02, 0.35);
-
-  headGroup.add(head, earL, earR, snout, nose);
-
-  // 3. TAY & CHÂN (Mập mạp, ngắn)
-  const limbGeo = new THREE.CapsuleGeometry(0.12, 0.3, 16, 16);
-
-  const armL = new THREE.Mesh(limbGeo, furMat);
-  armL.position.set(-0.5, 1.0, 0);
-  armL.rotation.z = Math.PI / 8; // Dang tay nhẹ
-
-  const armR = new THREE.Mesh(limbGeo, furMat);
-  armR.position.set(0.5, 1.0, 0);
-  armR.rotation.z = -Math.PI / 8;
-
-  const legL = new THREE.Mesh(limbGeo, furMat);
-  legL.position.set(-0.2, 0.3, 0);
-
-  const legR = new THREE.Mesh(limbGeo, furMat);
-  legR.position.set(0.2, 0.3, 0);
-
-  group.add(body, belly, headGroup, armL, armR, legL, legR);
-
-  return {
-    group,
-    scale: 1.6, // Giữ tỷ lệ to lớn hơn người
-    speedMultiplier: 0.6, // Di chuyển chậm
-    armL, // Trả về tay để có thể animate nhịp nhàng
-    armR,
-  };
-}
-
-// utils/goalkeepers.ts (Cập nhật phần Skunk)
-
-function createSkunkGK(): GKData {
-  const group = new THREE.Group();
-
-  const blackFur = new THREE.MeshStandardMaterial({
-    color: 0x222222,
-    roughness: 0.9,
-  });
-  const whiteFur = new THREE.MeshStandardMaterial({
-    color: 0xffffff,
-    roughness: 0.9,
-  });
-  const noseMat = new THREE.MeshStandardMaterial({
-    color: 0xff69b4,
-    roughness: 0.5,
-  }); // Mũi hồng đáng yêu
-
-  // 1. THÂN HÌNH (Nhỏ nhắn, hình hạt đậu/viên nang)
-  const body = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.2, 0.3, 16, 16),
-    blackFur
-  );
-  body.position.set(0, 0.5, 0);
-  body.castShadow = true;
-
-  // Vệt trắng trên lưng
-  const bodyStripe = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.06, 0.32, 8, 8),
-    whiteFur
-  );
-  bodyStripe.position.set(0, 0.52, -0.15); // Nằm ở mặt lưng sau
-
-  // 2. ĐẦU VÀ MẶT
-  const headGroup = new THREE.Group();
-  headGroup.position.set(0, 0.9, 0.05);
-
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16), blackFur);
-
-  // Vệt trắng trên đỉnh đầu
-  const headStripe = new THREE.Mesh(
-    new THREE.SphereGeometry(0.07, 16, 16),
-    whiteFur
-  );
-  headStripe.position.set(0, 0.12, 0.08);
-
-  // Mõm nhọn (ConeGeometry)
-  const snout = new THREE.Mesh(
-    new THREE.ConeGeometry(0.08, 0.15, 16),
-    blackFur
-  );
-  snout.rotation.x = Math.PI / 2;
-  snout.position.set(0, -0.02, 0.2);
-
-  // Mũi hồng ở chóp mõm
-  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 8), noseMat);
-  nose.position.set(0, -0.02, 0.28);
-
-  headGroup.add(head, headStripe, snout, nose);
-
-  // 3. ĐUÔI (Rất to, cong lên làm điểm nhấn)
-  const tail = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.15, 0.4, 16, 16),
-    blackFur
-  );
-  tail.position.set(0, 0.4, -0.35);
-  tail.rotation.x = -Math.PI / 6; // Đuôi vểnh lên
-
-  // Vệt trắng dài dọc đuôi
-  const tailStripe = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.05, 0.42, 8, 8),
-    whiteFur
-  );
-  tailStripe.position.set(0, 0.42, -0.4);
-  tailStripe.rotation.x = -Math.PI / 6;
-
-  // 4. TAY & CHÂN (Nhỏ, lanh lẹ)
-  const limbGeo = new THREE.CapsuleGeometry(0.05, 0.2, 16, 16);
-
-  const armL = new THREE.Mesh(limbGeo, blackFur);
-  armL.position.set(-0.25, 0.6, 0);
-  armL.rotation.z = Math.PI / 4;
-
-  const armR = new THREE.Mesh(limbGeo, blackFur);
-  armR.position.set(0.25, 0.6, 0);
-  armR.rotation.z = -Math.PI / 4;
-
-  const legL = new THREE.Mesh(limbGeo, blackFur);
-  legL.position.set(-0.1, 0.2, 0);
-
-  const legR = new THREE.Mesh(limbGeo, blackFur);
-  legR.position.set(0.1, 0.2, 0);
-
-  group.add(
-    body,
-    bodyStripe,
-    headGroup,
-    tail,
-    tailStripe,
-    armL,
-    armR,
-    legL,
-    legR
-  );
-
-  return {
-    group,
-    scale: 0.9, // Cơ thể nhỏ
-    speedMultiplier: 1.8, // Di chuyển nhanh nhạy
-    armL,
-    armR,
-  };
-}
-
-// utils/goalkeepers.ts (Cập nhật phần Human)
 
 function createHumanGK(): GKData {
   const skinMat = new THREE.MeshStandardMaterial({

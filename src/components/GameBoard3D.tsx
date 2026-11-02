@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import type { ShotOutcome } from "../utils/penaltyPhysics";
 import Penalty3D from "./Penalty3D";
 import { useGameStore } from "../store/gameStore";
 
@@ -39,15 +40,18 @@ export default function GameBoard3D() {
   // VÒNG LẶP ANIMATION HOẠT ĐỘNG DỰA THEO PHASE
   // ---------------------------------------------------------
   useEffect(() => {
-    if (gamePhase !== "playing") return;
+    if (gamePhase !== "playing" || (phase !== "aiming" && phase !== "timing")) return;
 
     let animId: number;
 
-    const loop = () => {
+    let previousTime: number | undefined;
+    const loop = (time: number) => {
+      const frameScale = previousTime === undefined ? 1 : Math.min((time - previousTime) / (1000 / 60), 3);
+      previousTime = time;
       // PHASE 1: Quét mũi tên chọn hướng sút (Góc sút)
       if (phase === "aiming") {
         setAimValue((prev) => {
-          let next = prev + 0.025 * aimDirRef.current;
+          let next = prev + 0.025 * frameScale * aimDirRef.current;
           if (next >= 1) {
             next = 1;
             aimDirRef.current = -1;
@@ -62,7 +66,7 @@ export default function GameBoard3D() {
       // PHASE 2: Phóng to/thu nhỏ Vòng Canh Nhịp Chất Lượng (Quality Ring)
       else if (phase === "timing") {
         setScaleValue((prev) => {
-          let next = prev + ringSpeed * scaleDirRef.current;
+          let next = prev + ringSpeed * frameScale * scaleDirRef.current;
           if (next >= 3) {
             next = 3;
             scaleDirRef.current = -1;
@@ -85,7 +89,7 @@ export default function GameBoard3D() {
   // XỬ LÝ HÀNH ĐỘNG NHẤN PHÍM / CLICK (2 NHỊP)
   // ---------------------------------------------------------
   const handleInput = () => {
-    if (gamePhase !== "playing") return;
+    if (gamePhase !== "playing" || shotResolved.current) return;
 
     // NHỊP 1: BẤM LẦN 1 -> CHỐT HƯỚNG SÚT
     if (phase === "aiming") {
@@ -118,59 +122,22 @@ export default function GameBoard3D() {
 
       // --- DYNAMIC GOALKEEPER TRAIT LOGIC ---
       const gkType = currentGK?.gkType || "human";
-      const gkModifiers = {
-        human: { speed: 1.0, reachRadius: 1.5, baseSaveBonus: 0.0 },
-        bear: { speed: 0.5, reachRadius: 1.8, baseSaveBonus: 0.25 },
-        skunk: { speed: 1.5, reachRadius: 1.2, baseSaveBonus: 0.15 },
-      };
-      const gkTrait = gkModifiers[gkType];
-
       // AI Position Choice
       let selectedGkX: number;
       if (gkType === "bear") {
-        selectedGkX =
-          Math.random() < 0.5 ? 0 : Math.random() < 0.5 ? -2.2 : 2.2;
+        selectedGkX = Math.random() < 0.5 ? 0 : Math.random() < 0.5 ? -2 : 2;
       } else {
         const gkChoices = [-2.8, 0, 2.8];
         selectedGkX = gkChoices[Math.floor(Math.random() * gkChoices.length)];
       }
       setGkTargetX(selectedGkX);
 
-      // RESULT CALCULATION
       const targetX = chosenTargetX.current;
-      let finalResult: "goal" | "miss" | "post" | "save" = shotQuality as any;
-
-      if (shotQuality === "on_target") {
-        const distanceToShot = Math.abs(selectedGkX - targetX);
-        const isWithinReach = distanceToShot <= gkTrait.reachRadius;
-
-        // Base probability scaled by difficulty
-        let baseSaveProbability =
-          difficulty === "easy" ? 0.5 : difficulty === "medium" ? 0.75 : 0.9;
-
-        baseSaveProbability += gkTrait.baseSaveBonus;
-
-        // Speed attenuation: Slower GKs lose efficiency quickly on distant shots
-        const speedEfficiency = Math.max(
-          0,
-          1 - distanceToShot / (2.5 * gkTrait.speed)
-        );
-        const finalSaveProbability = isWithinReach
-          ? baseSaveProbability * speedEfficiency
-          : 0.0;
-
-        if (Math.random() < finalSaveProbability) {
-          finalResult = "save";
-        } else {
-          finalResult = "goal";
-        }
-      }
+      const finalResult = shotQuality === "on_target" ? "goal" : shotQuality;
 
       // ĐẶT TỌA ĐỘ BAY CỦA BÓNG 3D
       let finalBallTarget: [number, number, number] = [0, 0, 0];
-      if (finalResult === "save") {
-        finalBallTarget = [selectedGkX, 1.2, -3.9]; // Bay thẳng vào tay/thân thủ môn
-      } else if (finalResult === "goal") {
+      if (finalResult === "goal") {
         finalBallTarget = [targetX, 1.2 + Math.random() * 0.8, -4.8]; // Bay vào lưới đúng vị trí đã chọn
       } else if (finalResult === "post") {
         finalBallTarget = [targetX > 0 ? 3.65 : -3.65, 1.2, -4.0]; // Trúng cột
@@ -180,30 +147,34 @@ export default function GameBoard3D() {
       }
 
       setBallTarget(finalBallTarget);
-
-      // ĐỢI ANIMATION 3D HOÀN TẤT VÀ HIỆN KẾT QUẢ
-      setTimeout(() => {
-        setPhase("result");
-        if (finalResult === "save") setResultMsg("🧤 CẢN PHÁ!");
-        else if (finalResult === "goal") setResultMsg("⚽ VÀOOOOOO!");
-        else if (finalResult === "post") setResultMsg("💥 CỘT DỌC!");
-        else setResultMsg("❌ TRƯỢT!");
-
-        // Chờ thêm 1.5 giây để chuyển sang lượt tiếp theo
-        setTimeout(() => {
-          setResultMsg("");
-          setScaleValue(1);
-          setAimValue(0.5);
-          setPhase("aiming");
-          recordShot(finalResult === "save" ? "miss" : finalResult);
-        }, 1000);
-      }, 600);
     }
   };
 
+  const resultTimer = useRef<ReturnType<typeof setTimeout>>();
+  const shotResolved = useRef(false);
+  const onShotResolved = useCallback((outcome: ShotOutcome) => {
+    if (shotResolved.current) return;
+    shotResolved.current = true;
+    setPhase("result");
+    setResultMsg({ save: "🧤 CẢN PHÁ!", goal: "⚽ VÀOOOOOO!", post: "💥 CỘT DỌC!", miss: "❌ TRƯỢT!" }[outcome]);
+    resultTimer.current = setTimeout(() => {
+      setResultMsg("");
+      setScaleValue(1);
+      setAimValue(0.5);
+      setPhase("aiming");
+      shotResolved.current = false;
+      recordShot(outcome === "save" ? "miss" : outcome);
+    }, 1000);
+  }, [recordShot]);
+
+  useEffect(() => () => clearTimeout(resultTimer.current), []);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === "Space") handleInput();
+      if (e.code === "Space") {
+        e.preventDefault();
+        if (!e.repeat) handleInput();
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
@@ -218,6 +189,7 @@ export default function GameBoard3D() {
       <div className="w-[1350px] h-[600px] relative overflow-hidden rounded-2xl shadow-2xl border border-slate-800 bg-slate-900 flex items-center justify-center">
         {/* Truyền gkTargetX để thủ môn thực sự bay người */}
         <Penalty3D
+          onShotResolved={onShotResolved}
           phase={phase}
           aimValue={aimValue}
           scaleValue={scaleValue}

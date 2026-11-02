@@ -1,4 +1,7 @@
-import { useRef } from "react";
+import { useCallback, useRef } from "react";
+import type { Penalty3DProps } from "../components/Penalty3D";
+import { animateGoalkeeper, type GKData } from "../utils/goalkeepers";
+import { BALL_RADIUS, createKeeperCollision } from "../utils/penaltyPhysics";
 import * as THREE from "three";
 import { getHexColor, createJerseyTexture } from "../utils/textures";
 import { playCheer, playGroan } from "../utils/audio";
@@ -13,10 +16,10 @@ export interface PhysicsElements {
   gkGroup: THREE.Group;
   aimArrowGroup: THREE.Group;
   timingRingGroup: THREE.Group;
-  net: THREE.Mesh;
-  kicker: any;
-  gkData: any; // <-- Dữ liệu thủ môn chứa group, speedMultiplier, armL, armR
-  smokeGroup?: THREE.Group; // <-- Group khói cho Chồn hôi
+  net: THREE.Group;
+  kicker: ReturnType<typeof import("../utils/models").createHumanoid>;
+  gkData: GKData;
+  smokeGroup?: THREE.Group;
   pShirtMat: THREE.MeshStandardMaterial;
   pNumberMat: THREE.MeshBasicMaterial;
   ringMat: THREE.MeshBasicMaterial;
@@ -24,7 +27,7 @@ export interface PhysicsElements {
   stadiumData: StadiumData;
 }
 
-export function usePenaltyPhysics(propsRef: React.MutableRefObject<any>) {
+export function usePenaltyPhysics(propsRef: React.MutableRefObject<Penalty3DProps>) {
   const stateRef = useRef({
     hasBounced: false,
     ballStartKick: false,
@@ -33,7 +36,7 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<any>) {
     currentJerseyHex: 0,
   });
 
-  const startAnimation = (elements: PhysicsElements) => {
+  const startAnimation = useCallback((elements: PhysicsElements) => {
     let animId: number;
     const clock = new THREE.Clock();
     const state = stateRef.current;
@@ -42,9 +45,20 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<any>) {
     state.currentJerseyHex = getHexColor(propsRef.current.jerseyColor);
 
     // --- KHAI BÁO CÁC BIẾN VA CHẠM VẬT LÝ ---
-    const gkBox = new THREE.Box3(); // Khối hộp bao quanh toàn bộ thể tích thủ môn[cite: 4]
-    const ballSphere = new THREE.Sphere(new THREE.Vector3(), 0.15); // Bán kính bóng 0.15m[cite: 4]
-    let hasCollided = false; // Cờ đánh dấu bóng đã chạm thủ môn[cite: 4]
+    const collidesWithKeeper = createKeeperCollision(elements.gkGroup);
+    const currentTarget = new THREE.Vector3();
+    const nextPosition = new THREE.Vector3();
+    const direction = new THREE.Vector3();
+    const dummy = new THREE.Object3D();
+    let resolved = false;
+    let goalScored = false;
+    const netRestZ = elements.net.position.z;
+    const resolve = (outcome: import("../utils/penaltyPhysics").ShotOutcome) => {
+      if (resolved) return;
+      resolved = true;
+      goalScored = outcome === "goal";
+      propsRef.current.onShotResolved?.(outcome);
+    };
 
     const animate = () => {
       animId = requestAnimationFrame(animate);
@@ -88,20 +102,21 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<any>) {
         });
       }
 
-      // Xử lý áo thay đổi màu[cite: 4]
+      // Xử lý áo thay đổi màu
       const targetHex = getHexColor(jerseyColor);
       if (state.currentJerseyHex !== targetHex) {
         state.currentJerseyHex = targetHex;
         pShirtMat.color.setHex(targetHex);
+        pNumberMat.map?.dispose();
         pNumberMat.map = createJerseyTexture(targetHex);
         pNumberMat.needsUpdate = true;
       }
 
-      // NHỊP 1: Định hướng[cite: 4]
+      // NHỊP 1: Định hướng
       aimArrowGroup.visible = phase === "aiming";
       aimArrowGroup.rotation.y = (aimValue - 0.5) * -Math.PI * 0.8;
 
-      // NHỊP 2: Vòng canh nhịp 3D[cite: 4]
+      // NHỊP 2: Vòng canh nhịp 3D
       timingRingGroup.visible = phase === "timing";
       if (phase === "timing") {
         const currentScale = scaleValue ?? 1;
@@ -115,7 +130,7 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<any>) {
         innerCircleMat.color.setHex(ringHexColor);
       }
 
-      // CẦU THỦ CHẠY ĐÀ VÀ RESET TỐC BIẾN[cite: 4]
+      // CẦU THỦ CHẠY ĐÀ VÀ RESET TỐC BIẾN
       if (phase === "shooting" || phase === "result") {
         if (pGroup.position.z > 2.5) {
           pGroup.position.z -= delta * 11;
@@ -135,7 +150,9 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<any>) {
       } else {
         state.ballStartKick = false;
         state.hasBounced = false;
-        hasCollided = false; // Reset cờ va chạm
+        resolved = false;
+        goalScored = false;
+        state.netBulgeTime = 0;
 
         ballGroup.position.set(0, 0.15, 2);
         ballGroup.rotation.set(0, 0, 0);
@@ -145,84 +162,64 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<any>) {
         kicker.legL.rotation.x = 0;
         kicker.legR.rotation.x = 0;
 
-        // Đã sửa gk.group thành gkData.group
         gkGroup.position.set(0, 0, -3.9);
-        if (gkData && gkData.group) {
-          gkData.group.rotation.z = 0;
-          gkData.group.position.y = 0;
-        }
       }
 
       // --- 2. THỦ MÔN BAY NGƯỜI (Áp dụng Speed Multiplier) ---
       if (state.ballStartKick) {
-        const safeGkX = Math.max(-2.2, Math.min(2.2, gkTargetX));
-        const speedMulti = gkData?.speedMultiplier || 1; // Lấy hệ số tốc độ (Gấu chậm, chồn nhanh)
+        const safeGkX = Math.max(-2.2, Math.min(2.2, gkTargetX ?? 0));
+        const speedMulti = gkData.speedMultiplier; // Lấy hệ số tốc độ (Gấu chậm, chồn nhanh)
 
         // Cập nhật vị trí X của thủ môn
         gkGroup.position.x +=
-          (safeGkX - gkGroup.position.x) * Math.min(delta * 7 * speedMulti, 1);
-
-        const dist = Math.abs(gkGroup.position.x);
-        if (dist > 0.3 && gkData && gkData.group) {
-          const leanDir = gkGroup.position.x > 0 ? -1 : 1;
-          gkData.group.rotation.z = leanDir * Math.min(dist * 0.8, 1.4);
-          gkData.group.position.y =
-            Math.sin(Math.min(dist * 0.5, Math.PI)) * 0.8;
-
-          if (gkData.armL) gkData.armL.rotation.z = 2.5;
-          if (gkData.armR) gkData.armR.rotation.z = -2.5;
-        }
+          (safeGkX - gkGroup.position.x) * (1 - Math.exp(-delta * 7 * speedMulti));
       }
+      animateGoalkeeper(gkData, time, delta, state.ballStartKick, gkGroup.position.x);
 
       // --- 3. VẬT LÝ BÓNG BAY & VA CHẠM VỚI THỦ MÔN ---
       if (state.ballStartKick) {
-        // KIỂM TRA VA CHẠM THỜI GIAN THỰC
-        if (!hasCollided) {
-          // Lấy bounding box bao trọn kích thước hiện tại của thủ môn (kể cả khi Gấu bị scale x1.5)
-          gkBox.setFromObject(gkGroup);
-          // Lấy vị trí hiện tại của bóng
-          ballSphere.center.copy(ballGroup.position);
-
-          // Nếu bóng chạm vào cơ thể thủ môn
-          if (gkBox.intersectsSphere(ballSphere)) {
-            hasCollided = true;
-            state.hasBounced = true; // Hủy quỹ đạo bay thẳng vào khung thành
-            playGroan(); // Phát tiếng ồ tiếc nuối
-
-            // Bóng bật ra ngoài ngẫu nhiên
-            state.reboundVel.set(
-              (Math.random() - 0.5) * 8, // Bật trái/phải
-              Math.random() * 5 + 2, // Bật lên trời
-              Math.random() * 10 + 5 // Bật ngược lại về phía sân
-            );
-          }
-        }
-
         // QUỸ ĐẠO BAY CỦA BÓNG
         if (!state.hasBounced) {
-          const currentTarget = new THREE.Vector3(...ballTarget);
+          currentTarget.set(...ballTarget);
           const dist = ballGroup.position.distanceTo(currentTarget);
 
-          if (dist > 0.3) {
-            const flySpeed = delta * 24;
-            const direction = new THREE.Vector3()
-              .subVectors(currentTarget, ballGroup.position)
-              .normalize();
-            ballGroup.position.add(direction.multiplyScalar(flySpeed));
-            ballGroup.rotation.x -= delta * 40;
+          direction.subVectors(currentTarget, ballGroup.position).normalize();
+          nextPosition.copy(ballGroup.position).addScaledVector(direction, Math.min(delta * 24, dist));
+          if (collidesWithKeeper(ballGroup.position, nextPosition)) {
+            // Locate first contact along the sweep so rebounds start at the keeper.
+            let low = 0;
+            let high = 1;
+            for (let i = 0; i < 8; i++) {
+              const middle = (low + high) / 2;
+              currentTarget.lerpVectors(ballGroup.position, nextPosition, middle);
+              if (collidesWithKeeper(ballGroup.position, currentTarget)) high = middle;
+              else low = middle;
+            }
+            ballGroup.position.lerp(nextPosition, high);
+            state.hasBounced = true;
+            playGroan();
+            state.reboundVel.set((Math.random() - 0.5) * 8, Math.random() * 5 + 2, Math.random() * 10 + 5);
+            resolve("save");
           } else {
+            ballGroup.position.copy(nextPosition);
+            ballGroup.rotation.x -= delta * 40;
+          }
+          if (!state.hasBounced && ballGroup.position.distanceToSquared(currentTarget) < 0.0001) {
             state.hasBounced = true;
             const targetZ = ballTarget[2];
             const targetX = ballTarget[0];
 
             if (targetZ <= -6) {
+              resolve("miss");
               playGroan();
               state.reboundVel.set(targetX > 0 ? 4 : -4, -1, -6);
             } else if (targetZ < -4.5) {
+              resolve("goal");
               playCheer();
               state.reboundVel.set((Math.random() - 0.5) * 1.5, -4, 2);
               state.netBulgeTime = 0.2;
             } else if (targetZ > -4.2 && targetZ < -3.8) {
+              resolve("post");
               playGroan();
               const bounceX = targetX > 0 ? -3 : 3;
               state.reboundVel.set(bounceX + (Math.random() - 0.5) * 3, 4, 8);
@@ -233,8 +230,8 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<any>) {
           ballGroup.position.addScaledVector(state.reboundVel, delta);
           state.reboundVel.y -= 18 * delta; // Trọng lực kéo xuống
 
-          if (ballGroup.position.y < 0.15) {
-            ballGroup.position.y = 0.15;
+          if (ballGroup.position.y < BALL_RADIUS) {
+            ballGroup.position.y = BALL_RADIUS;
             state.reboundVel.y *= -0.55; // Nảy lên
             state.reboundVel.x *= 0.8; // Ma sát giảm tốc
             state.reboundVel.z *= 0.8;
@@ -244,18 +241,18 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<any>) {
         }
       }
 
-      // HIỆU ỨNG LƯỚI[cite: 4]
+      // HIỆU ỨNG LƯỚI
       if (state.netBulgeTime > 0) {
         state.netBulgeTime -= delta;
         const intensity = state.netBulgeTime * 5;
-        net.position.z = -0.6 - intensity * 0.4;
+        net.position.z = netRestZ - intensity * 0.4;
         net.scale.z = 1 + intensity * 0.15;
       } else {
-        net.position.z = -0.6;
+        net.position.z = netRestZ;
         net.scale.z = 1;
       }
 
-      // HIỆU ỨNG KHÁN GIẢ[cite: 4]
+      // HIỆU ỨNG KHÁN GIẢ
       const { stadiumData } = elements;
       const {
         bodiesInstanced,
@@ -265,10 +262,9 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<any>) {
         flagCount,
       } = stadiumData;
 
-      const dummy = new THREE.Object3D();
-      const elapsedTime = clock.getElapsedTime();
+      const elapsedTime = time;
 
-      const isGoalScored = phase === "result";
+      const isGoalScored = phase === "result" && goalScored;
       const jumpSpeed = isGoalScored ? 12 : 5;
       const jumpHeight = isGoalScored ? 0.25 : 0.08;
 
@@ -309,7 +305,7 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<any>) {
     animate();
 
     return () => cancelAnimationFrame(animId);
-  };
+  }, [propsRef]);
 
   return { startAnimation };
 }

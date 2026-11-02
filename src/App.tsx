@@ -18,7 +18,7 @@ export default function App() {
   };
 
   return (
-    <main className="relative w-screen h-screen px-5 pb-3 bg-slate-950 flex flex-col items-center font-sans select-none overflow-hidden">
+    <main className="relative w-full h-[100dvh] px-2 sm:px-5 pb-3 bg-slate-950 flex flex-col items-center font-sans select-none overflow-hidden">
       {/* Bảng tỉ số (nằm hoàn toàn ngoài sân bóng để không che gôn) */}
       {gamePhase !== "menu" && (
         <div className="w-full max-w-4xl p-3 z-10">
@@ -27,10 +27,12 @@ export default function App() {
       )}
 
       {/* Sân bóng chính */}
-      <div className="relative flex-1 w-full overflow-hidden flex flex-col items-center">
+      <div className="relative flex-1 min-h-0 w-full overflow-hidden flex flex-col items-center">
         {gamePhase === "menu" ? (
-          <div className="absolute inset-0 z-40 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-            <Settings />
+          <div className="absolute inset-0 z-40 overflow-y-auto overscroll-contain bg-slate-950/80 backdrop-blur-sm p-2 sm:p-4 pb-24">
+            <div className="flex min-h-full items-center justify-center">
+              <Settings />
+            </div>
           </div>
         ) : graphicsMode === "2d" ? (
           <>
@@ -67,7 +69,7 @@ export default function App() {
         )}
       </div>
 
-      <div className="absolute bottom-6 right-6 z-[60] flex items-center gap-3">
+      <div className="absolute bottom-3 right-3 sm:bottom-6 sm:right-6 z-[60] flex items-center gap-3">
         {gamePhase !== "menu" && (
           <button
             onClick={resetGame}

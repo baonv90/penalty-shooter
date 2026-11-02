@@ -15,9 +15,11 @@ import {
 } from "../utils/models";
 import { createGoalkeeper } from "../utils/goalkeepers"; // <-- Import mới
 import { usePenaltyPhysics } from "../hooks/usePenaltyPhysics";
+import { BALL_RADIUS, disposeScene, ShotOutcome } from "../utils/penaltyPhysics";
 import { GKType, Player } from "../store/gameStore";
 
 export interface Penalty3DProps {
+  onShotResolved?: (outcome: ShotOutcome) => void;
   phase: "aiming" | "timing" | "power" | "shooting" | "result";
   aimValue: number;
   scaleValue?: number;
@@ -29,6 +31,7 @@ export interface Penalty3DProps {
 }
 
 export default function Penalty3D({
+  onShotResolved,
   phase,
   aimValue,
   scaleValue,
@@ -41,7 +44,9 @@ export default function Penalty3D({
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Sync Props xuống Hook
-  const propsRef = useRef({
+  const propsRef = useRef<Penalty3DProps>({
+    players,
+    onShotResolved,
     phase,
     aimValue,
     scaleValue,
@@ -52,6 +57,8 @@ export default function Penalty3D({
   });
   useEffect(() => {
     propsRef.current = {
+      players,
+      onShotResolved,
       phase,
       aimValue,
       scaleValue,
@@ -60,7 +67,7 @@ export default function Penalty3D({
       gkType,
       gkTargetX,
     };
-  }, [phase, aimValue, scaleValue, ballTarget, gkType, jerseyColor, gkTargetX]);
+  }, [phase, aimValue, scaleValue, ballTarget, gkType, jerseyColor, gkTargetX, players, onShotResolved]);
 
   const { startAnimation } = usePenaltyPhysics(propsRef);
 
@@ -70,7 +77,7 @@ export default function Penalty3D({
 
     // Get dynamic container dimensions
     const width = container.clientWidth;
-    const height = container.clientHeight;
+    const height = Math.max(container.clientHeight, 1);
 
     // 1. Perspective Camera aspect ratio calculation
     const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 150);
@@ -88,8 +95,6 @@ export default function Penalty3D({
 
     // Tối ưu hóa bóng đổ để tránh mỏi GPU TV
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    container.appendChild(renderer.domElement);
-
     scene.add(new THREE.AmbientLight(0xffffff, 0.8));
     const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
     dirLight.position.set(5, 15, 10);
@@ -239,7 +244,7 @@ export default function Penalty3D({
     });
 
     const ballCore = new THREE.Mesh(
-      new THREE.SphereGeometry(0.15, 32, 32),
+      new THREE.SphereGeometry(BALL_RADIUS, 32, 32),
       ballMat
     );
     ballCore.castShadow = true;
@@ -259,8 +264,9 @@ export default function Penalty3D({
         opacity: 0.9,
       });
       // Tạo 5 khối cầu khói lơ lửng quanh vùng timing ring
+      const smokeGeometry = new THREE.SphereGeometry(0.6);
       for (let i = 0; i < 10; i++) {
-        const smoke = new THREE.Mesh(new THREE.SphereGeometry(0.6), smokeMat);
+        const smoke = new THREE.Mesh(smokeGeometry, smokeMat);
         smoke.position.set(
           (Math.random() - 0.5) * 1.5,
           (Math.random() - 0.5) * 2.5,
@@ -279,7 +285,7 @@ export default function Penalty3D({
       color: 0xffdbac,
       roughness: 0.6,
     });
-    let currentJerseyHex = getHexColor(propsRef.current.jerseyColor);
+    const currentJerseyHex = getHexColor(propsRef.current.jerseyColor);
     const pShirtMat = new THREE.MeshStandardMaterial({
       color: currentJerseyHex,
     });
@@ -319,8 +325,8 @@ export default function Penalty3D({
 
     // Giơ tay nếu là Human
     if (gkData.armL && gkData.armR) {
-      gkData.armL.rotation.z = 0.5;
-      gkData.armR.rotation.z = -0.5;
+      gkData.armL.rotation.z = gkData.rig ? -0.7 : 0.5;
+      gkData.armR.rotation.z = gkData.rig ? 0.7 : -0.5;
     }
 
     const gkGroup = new THREE.Group();
@@ -328,25 +334,9 @@ export default function Penalty3D({
     gkGroup.add(gkData.group);
     scene.add(gkGroup);
 
-    // const gk = createHumanoid(
-    //   skinMat,
-    //   new THREE.MeshStandardMaterial({ color: 0x10b981 }),
-    //   new THREE.MeshStandardMaterial({ color: 0x000000 }),
-    //   0x000000,
-    //   createFaceTexture(),
-    //   false,
-    //   "1"
-    // );
-    // gk.armL.rotation.z = 0.5;
-    // gk.armR.rotation.z = -0.5;
-    // const gkGroup = new THREE.Group();
-    // gkGroup.position.set(0, 0, -3.9);
-    // gkGroup.add(gk.group);
-    // scene.add(gkGroup);
-
     const stadiumData = createOptimizedStadium(
-      getHexColor(players[0].jerseyColor).toString(),
-      getHexColor(players[1].jerseyColor).toString()
+      getHexColor(propsRef.current.players[0]?.jerseyColor ?? "bg-red-600"),
+      getHexColor(propsRef.current.players[1]?.jerseyColor ?? "bg-blue-600")
     );
     scene.add(stadiumData.stadiumGroup);
 
@@ -374,7 +364,7 @@ export default function Penalty3D({
     const handleResize = () => {
       if (!containerRef.current) return;
       const newWidth = container.clientWidth;
-      const newHeight = container.clientHeight;
+      const newHeight = Math.max(container.clientHeight, 1);
 
       // Update Camera aspect ratio & projection matrix
       camera.aspect = newWidth / newHeight;
@@ -384,18 +374,21 @@ export default function Penalty3D({
       renderer.setSize(newWidth, newHeight);
     };
 
-    window.addEventListener("resize", handleResize);
+    const resizeObserver = new ResizeObserver(handleResize);
+    resizeObserver.observe(container);
 
     // Cleanup
     return () => {
-      window.removeEventListener("resize", handleResize);
+      resizeObserver.disconnect();
       cleanupAnimation();
+      disposeScene(scene);
+      dirLight.shadow.dispose();
       renderer.dispose();
       if (container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
       }
     };
-  }, [gkType]);
+  }, [gkType, startAnimation]);
 
   return (
     <div

@@ -16,8 +16,8 @@ export interface StadiumData {
 }
 
 export function createOptimizedStadium(
-  homeColor: string,
-  awayColor: string
+  homeColor: number,
+  awayColor: number
 ): StadiumData {
   const stadiumGroup = new THREE.Group();
   stadiumGroup.position.set(0, 0, -10);
@@ -67,10 +67,8 @@ export function createOptimizedStadium(
   // 3. Flags Geometry & Material (Every ~15th supporter holds a flag)
   const flagCount = Math.floor(totalFans / 10);
   const flagGeo = new THREE.PlaneGeometry(1, 0.7);
-  const fcolor = new THREE.Color();
-  fcolor.setHex(homeColor);
   const flagMat = new THREE.MeshStandardMaterial({
-    color: fcolor,
+    color: 0xffffff,
     side: THREE.DoubleSide,
     roughness: 0.6,
   });
@@ -79,13 +77,17 @@ export function createOptimizedStadium(
   const dummy = new THREE.Object3D();
   const color = new THREE.Color();
 
+  let flagIndex = 0;
   fanPositions.forEach((pos, idx) => {
     // Set initial Body transform
     dummy.position.set(pos.x, pos.y + 0.05, pos.z);
     dummy.updateMatrix();
     bodiesInstanced.setMatrixAt(idx, dummy.matrix);
-    color.setHex(parseInt(pos.isHome ? homeColor : awayColor));
+    color.setHex(pos.isHome ? homeColor : awayColor);
     bodiesInstanced.setColorAt(idx, color);
+    if (idx % 10 === 0 && flagIndex < flagCount) {
+      flagsInstanced.setColorAt(flagIndex++, color);
+    }
 
     // Set initial Head transform
     dummy.position.set(pos.x, pos.y + 0.55, pos.z);

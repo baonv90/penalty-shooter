@@ -40,18 +40,19 @@ export default function Settings() {
   };
 
   return (
-    <div className="bg-slate-800 p-6 shadow-2xl text-white w-full max-w-xl mx-auto my-5">
-      <h1 className="text-2xl font-black mb-6 text-center text-green-400 tracking-wider">
+    <div className="bg-slate-800/95 p-4 sm:p-6 shadow-2xl text-white w-full max-w-2xl mx-auto rounded-2xl border border-slate-700">
+      <h1 className="text-xl sm:text-2xl font-black mb-4 text-center text-green-400 tracking-wider">
         PENALTY SHOOTOUT
       </h1>
 
-      <div className="grid grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3 mb-4">
         <div>
-          <label className="block text-xs font-bold text-gray-400 mb-2 uppercase">
+          <label htmlFor="difficulty" className="block text-xs font-bold text-gray-400 mb-2 uppercase">
             Độ khó
           </label>
           <select
-            className="w-full p-3 bg-slate-900 rounded-xl outline-none border border-slate-600"
+            className="min-w-0 w-full p-3 text-sm bg-slate-900 rounded-xl outline-none border border-slate-600"
+            id="difficulty"
             value={diff}
             onChange={(e) => setDiff(e.target.value as Difficulty)}
           >
@@ -61,11 +62,12 @@ export default function Settings() {
           </select>
         </div>
         <div>
-          <label className="block text-xs font-bold text-gray-400 mb-2 uppercase">
+          <label htmlFor="ball-type" className="block text-xs font-bold text-gray-400 mb-2 uppercase">
             Kiểu bóng
           </label>
           <select
-            className="w-full p-3 bg-slate-900 rounded-xl outline-none border border-slate-600"
+            className="min-w-0 w-full p-3 text-sm bg-slate-900 rounded-xl outline-none border border-slate-600"
+            id="ball-type"
             value={ball}
             onChange={(e) => setBall(e.target.value as BallType)}
           >
@@ -80,10 +82,10 @@ export default function Settings() {
         <label className="block text-xs font-bold text-gray-400 mb-2 uppercase">
           Cách sút
         </label>
-        <div className="flex gap-4">
+        <div className="grid grid-cols-2 gap-2">
           <button
             onClick={() => setMethod("button")}
-            className={`flex-1 py-2 rounded-xl border-2 font-bold ${
+            className={`min-h-[44px] px-2 py-2 text-sm rounded-xl border-2 font-bold ${
               method === "button"
                 ? "bg-green-600 border-green-400"
                 : "bg-slate-900 border-slate-600"
@@ -93,7 +95,7 @@ export default function Settings() {
           </button>
           <button
             onClick={() => setMethod("voice")}
-            className={`flex-1 py-2 rounded-xl border-2 font-bold ${
+            className={`min-h-[44px] px-2 py-2 text-sm rounded-xl border-2 font-bold ${
               method === "voice"
                 ? "bg-green-600 border-green-400"
                 : "bg-slate-900 border-slate-600"
@@ -104,13 +106,14 @@ export default function Settings() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-8 mb-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
         {[0, 1].map((playerId) => (
           <div
             key={playerId}
-            className="bg-slate-900 p-4 rounded-xl border border-slate-700"
+            className="min-w-0 bg-slate-900 p-3 rounded-xl border border-slate-700"
           >
             <input
+              aria-label={`Tên người chơi ${playerId + 1}`}
               type="text"
               value={players[playerId].name}
               onChange={(e) => setPlayerName(playerId, e.target.value)}
@@ -120,7 +123,10 @@ export default function Settings() {
             />
             <div className="flex gap-2 flex-wrap justify-center">
               {AVAILABLE_COLORS.map((c) => (
-                <div
+                <button
+                  type="button"
+                  aria-label={`Màu áo ${c.replace("bg-", "")} cho người chơi ${playerId + 1}`}
+                  aria-pressed={players[playerId].jerseyColor === c}
                   key={c}
                   onClick={() => setPlayerColor(playerId, c)}
                   className={`w-9 h-9 rounded-full border-2 cursor-pointer flex items-center justify-center ${
@@ -129,68 +135,36 @@ export default function Settings() {
                       : "border-transparent"
                   }`}
                 >
-                  <div className={`w-6 h-6 rounded-full ${c}`} />
-                </div>
+                  <span className={`w-6 h-6 rounded-full ${c}`} />
+                </button>
               ))}
             </div>
-            <div className="p-4 bg-slate-800 rounded-lg">
-              <div className="flex gap-4">
-                {/* Human GK */}
-                <button
-                  onClick={() => handleGkChange(playerId, "human")}
-                  className={`p-2 bg-blue-500 rounded ${
-                    players[playerId].gkType === "human"
-                      ? "border-2 border-green-400"
-                      : ""
-                  }`}
-                >
-                  <svg width="40" height="40" viewBox="0 0 100 100">
-                    <circle cx="50" cy="30" r="20" fill="#ffdbac" />
-                    <rect x="30" y="50" width="40" height="50" fill="#10b981" />
-                  </svg>
-                  <p className="text-white text-xs mt-1">Human</p>
-                </button>
-
-                {/* Bear GK */}
-                <button
-                  onClick={() => handleGkChange(playerId, "bear")}
-                  className={`p-2 bg-amber-700 rounded  ${
-                    players[playerId].gkType === "bear"
-                      ? "border-2 border-green-400"
-                      : ""
-                  }`}
-                >
-                  <svg width="40" height="40" viewBox="0 0 100 100">
-                    <circle cx="30" cy="20" r="10" fill="#5c4033" />{" "}
-                    {/* Tai trái */}
-                    <circle cx="70" cy="20" r="10" fill="#5c4033" />{" "}
-                    {/* Tai phải */}
-                    <circle cx="50" cy="40" r="25" fill="#8b5a2b" /> {/* Đầu */}
-                    <rect x="20" y="60" width="60" height="40" fill="#8b5a2b" />
-                    {/* Thân to */}
-                  </svg>
-                  <p className="text-white text-xs mt-1">Bear</p>
-                </button>
-
-                {/* Skunk GK */}
-                <button
-                  onClick={() => handleGkChange(playerId, "skunk")}
-                  className={`p-2 bg-gray-600 rounded  ${
-                    players[playerId].gkType === "skunk"
-                      ? "border-2 border-green-400"
-                      : ""
-                  }`}
-                >
-                  <svg width="40" height="40" viewBox="0 0 100 100">
-                    <circle cx="50" cy="35" r="15" fill="#222" />
-                    <rect x="45" y="20" width="10" height="30" fill="#fff" />
-                    {/* Vệt trắng */}
-                    <rect x="35" y="50" width="30" height="30" fill="#222" />
-                  </svg>
-                  <p className="text-white text-xs mt-1">Skunk</p>
-                </button>
+            <fieldset className="mt-3 min-w-0">
+              <legend className="text-xs font-bold text-slate-400 mb-2 uppercase">Thủ môn</legend>
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { type: "human", icon: "🧤", label: "Human", trait: "Cân bằng" },
+                  { type: "bear", icon: "🐻", label: "Bear", trait: "To · Chậm" },
+                  { type: "skunk", icon: "🦨", label: "Skunk", trait: "Nhỏ · Nhanh" },
+                ] as const).map(({ type, icon, label, trait }) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => handleGkChange(playerId, type)}
+                    aria-pressed={players[playerId].gkType === type}
+                    className={`min-w-0 rounded-xl border-2 px-1 py-3 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-green-400 ${
+                      players[playerId].gkType === type
+                        ? "border-green-400 bg-green-500/15"
+                        : "border-slate-700 bg-slate-800 hover:border-slate-500"
+                    }`}
+                  >
+                    <span aria-hidden="true" className="block text-3xl mb-1">{icon}</span>
+                    <span className="block text-xs font-bold">{label}</span>
+                    <span className="block text-[10px] text-slate-400 mt-1">{trait}</span>
+                  </button>
+                ))}
               </div>
-            </div>
+            </fieldset>
           </div>
         ))}
       </div>
@@ -199,10 +173,10 @@ export default function Settings() {
         <label className="block text-xs font-bold text-gray-400 mb-2 uppercase">
           Đồ hoạ (Graphics)
         </label>
-        <div className="flex gap-4">
+        <div className="grid grid-cols-2 gap-2">
           <button
             onClick={() => setGraphicsMode("2d")}
-            className={`flex-1 py-2 rounded-xl font-bold border-2 ${
+            className={`min-h-[44px] px-2 py-2 text-sm rounded-xl font-bold border-2 ${
               graphicsMode === "2d"
                 ? "bg-green-600 border-green-400"
                 : "bg-slate-900 border-slate-600 text-slate-400"
@@ -212,7 +186,7 @@ export default function Settings() {
           </button>
           <button
             onClick={() => setGraphicsMode("3d")}
-            className={`flex-1 py-2 rounded-xl font-bold border-2 ${
+            className={`min-h-[44px] px-2 py-2 text-sm rounded-xl font-bold border-2 ${
               graphicsMode === "3d"
                 ? "bg-green-600 border-green-400"
                 : "bg-slate-900 border-slate-600 text-slate-400"

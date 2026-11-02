@@ -19,6 +19,7 @@ import { BALL_RADIUS, disposeScene, ShotOutcome } from "../utils/penaltyPhysics"
 import { GKType, Player } from "../store/gameStore";
 
 export interface Penalty3DProps {
+  controlsRef?: React.MutableRefObject<{ aimValue: number; scaleValue: number }>;
   onShotResolved?: (outcome: ShotOutcome) => void;
   phase: "aiming" | "timing" | "power" | "shooting" | "result";
   aimValue: number;
@@ -31,6 +32,7 @@ export interface Penalty3DProps {
 }
 
 export default function Penalty3D({
+  controlsRef,
   onShotResolved,
   phase,
   aimValue,
@@ -45,6 +47,7 @@ export default function Penalty3D({
 
   // Sync Props xuống Hook
   const propsRef = useRef<Penalty3DProps>({
+    controlsRef,
     players,
     onShotResolved,
     phase,
@@ -57,6 +60,7 @@ export default function Penalty3D({
   });
   useEffect(() => {
     propsRef.current = {
+      controlsRef,
       players,
       onShotResolved,
       phase,
@@ -67,7 +71,7 @@ export default function Penalty3D({
       gkType,
       gkTargetX,
     };
-  }, [phase, aimValue, scaleValue, ballTarget, gkType, jerseyColor, gkTargetX, players, onShotResolved]);
+  }, [phase, aimValue, scaleValue, ballTarget, gkType, jerseyColor, gkTargetX, players, onShotResolved, controlsRef]);
 
   const { startAnimation } = usePenaltyPhysics(propsRef);
 
@@ -87,7 +91,7 @@ export default function Penalty3D({
     // 2. Renderer sizing
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // High-DPI screen support
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // High-DPI screen support
     container.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
@@ -257,14 +261,14 @@ export default function Penalty3D({
 
     // --- HIỆU ỨNG KHÓI CHO CHỒN (SKUNK) ---
     const smokeGroup = new THREE.Group();
-    if (propsRef.current.gkType === "skunk") {
+    {
       const smokeMat = new THREE.MeshBasicMaterial({
         color: 0x888888,
         transparent: true,
         opacity: 0.9,
       });
       // Tạo 5 khối cầu khói lơ lửng quanh vùng timing ring
-      const smokeGeometry = new THREE.SphereGeometry(0.6);
+      const smokeGeometry = new THREE.SphereGeometry(0.6, 12, 8);
       for (let i = 0; i < 10; i++) {
         const smoke = new THREE.Mesh(smokeGeometry, smokeMat);
         smoke.position.set(
@@ -388,7 +392,7 @@ export default function Penalty3D({
         container.removeChild(renderer.domElement);
       }
     };
-  }, [gkType, startAnimation]);
+  }, [startAnimation]);
 
   return (
     <div

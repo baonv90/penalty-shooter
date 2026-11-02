@@ -95,6 +95,9 @@ export function createOptimizedStadium(
     headsInstanced.setMatrixAt(idx, dummy.matrix);
   });
 
+  bodiesInstanced.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  headsInstanced.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  flagsInstanced.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   stadiumGroup.add(bodiesInstanced, headsInstanced, flagsInstanced);
 
   return {

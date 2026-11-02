@@ -1,7 +1,7 @@
 import { useCallback, useRef } from "react";
 import type { Penalty3DProps } from "../components/Penalty3D";
-import { animateGoalkeeper, type GKData } from "../utils/goalkeepers";
-import { BALL_RADIUS, createKeeperCollision } from "../utils/penaltyPhysics";
+import { createGoalkeeper, animateGoalkeeper, type GKData } from "../utils/goalkeepers";
+import { BALL_RADIUS, createKeeperCollision, disposeScene } from "../utils/penaltyPhysics";
 import * as THREE from "three";
 import { getHexColor, createJerseyTexture } from "../utils/textures";
 import { playCheer, playGroan } from "../utils/audio";
@@ -45,11 +45,13 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<Penalty3DProp
     state.currentJerseyHex = getHexColor(propsRef.current.jerseyColor);
 
     // --- KHAI BÁO CÁC BIẾN VA CHẠM VẬT LÝ ---
-    const collidesWithKeeper = createKeeperCollision(elements.gkGroup);
+    let collidesWithKeeper = createKeeperCollision(elements.gkGroup);
     const currentTarget = new THREE.Vector3();
     const nextPosition = new THREE.Vector3();
     const direction = new THREE.Vector3();
     const dummy = new THREE.Object3D();
+    let keeperType = propsRef.current.gkType;
+    let lastCrowdUpdate = -Infinity;
     let resolved = false;
     let goalScored = false;
     const netRestZ = elements.net.position.z;
@@ -63,12 +65,22 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<Penalty3DProp
     const animate = () => {
       animId = requestAnimationFrame(animate);
       const delta = Math.min(clock.getDelta(), 0.1);
-      const time = clock.getElapsedTime();
+      if (document.hidden) return;
+      const time = clock.elapsedTime;
 
+      // Replace only the keeper; preserve the renderer, pitch, stadium and textures.
+      if (propsRef.current.gkType !== keeperType) {
+        keeperType = propsRef.current.gkType;
+        elements.gkGroup.remove(elements.gkData.group);
+        disposeScene(elements.gkData.group);
+        elements.gkData = createGoalkeeper(keeperType);
+        elements.gkData.group.scale.setScalar(elements.gkData.scale);
+        elements.gkGroup.position.set(0, 0, -3.9);
+        elements.gkGroup.add(elements.gkData.group);
+        collidesWithKeeper = createKeeperCollision(elements.gkGroup);
+      }
       const {
         phase,
-        aimValue,
-        scaleValue,
         ballTarget,
         gkTargetX,
         jerseyColor,
@@ -92,8 +104,12 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<Penalty3DProp
         innerCircleMat,
       } = elements;
 
+      const aimValue = propsRef.current.controlsRef?.current.aimValue ?? propsRef.current.aimValue;
+      const scaleValue = propsRef.current.controlsRef?.current.scaleValue ?? propsRef.current.scaleValue;
+
       // --- 1. HIỆU ỨNG KHÓI CHO CHỒN (SKUNK) ---
-      if (smokeGroup) {
+      if (smokeGroup) smokeGroup.visible = keeperType === "skunk";
+      if (smokeGroup?.visible) {
         smokeGroup.rotation.z += delta * 0.5; // Xoay vòng từ từ
         smokeGroup.children.forEach((child, idx) => {
           // Phình to thu nhỏ liên tục tạo cảm giác mờ ảo
@@ -185,14 +201,15 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<Penalty3DProp
 
           direction.subVectors(currentTarget, ballGroup.position).normalize();
           nextPosition.copy(ballGroup.position).addScaledVector(direction, Math.min(delta * 24, dist));
-          if (collidesWithKeeper(ballGroup.position, nextPosition)) {
+          collidesWithKeeper.prepare();
+          if (collidesWithKeeper(ballGroup.position, nextPosition, BALL_RADIUS, true)) {
             // Locate first contact along the sweep so rebounds start at the keeper.
             let low = 0;
             let high = 1;
             for (let i = 0; i < 8; i++) {
               const middle = (low + high) / 2;
               currentTarget.lerpVectors(ballGroup.position, nextPosition, middle);
-              if (collidesWithKeeper(ballGroup.position, currentTarget)) high = middle;
+              if (collidesWithKeeper(ballGroup.position, currentTarget, BALL_RADIUS, true)) high = middle;
               else low = middle;
             }
             ballGroup.position.lerp(nextPosition, high);
@@ -252,52 +269,50 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<Penalty3DProp
         net.scale.z = 1;
       }
 
-      // HIỆU ỨNG KHÁN GIẢ
-      const { stadiumData } = elements;
-      const {
-        bodiesInstanced,
-        headsInstanced,
-        flagsInstanced,
-        fanPositions,
-        flagCount,
-      } = stadiumData;
+      // Background crowd updates at 30 Hz; gameplay still renders every frame.
+      if (time - lastCrowdUpdate >= 1 / 30) {
+        lastCrowdUpdate = time;
+        const { stadiumData } = elements;
+        const {
+          bodiesInstanced,
+          headsInstanced,
+          flagsInstanced,
+          fanPositions,
+          flagCount,
+        } = stadiumData;
 
-      const elapsedTime = time;
+        const elapsedTime = time;
 
-      const isGoalScored = phase === "result" && goalScored;
-      const jumpSpeed = isGoalScored ? 12 : 5;
-      const jumpHeight = isGoalScored ? 0.25 : 0.08;
+        const isGoalScored = phase === "result" && goalScored;
+        const jumpSpeed = isGoalScored ? 12 : 5;
+        const jumpHeight = isGoalScored ? 0.25 : 0.08;
 
-      let flagIdx = 0;
+        let flagIdx = 0;
 
-      fanPositions.forEach((pos, i) => {
-        const jumpOffset =
-          Math.sin(elapsedTime * jumpSpeed + pos.phase) * jumpHeight;
-        const currentY = Math.max(pos.y, pos.y + jumpOffset);
+        fanPositions.forEach((pos, i) => {
+          const jumpOffset =
+            Math.sin(elapsedTime * jumpSpeed + pos.phase) * jumpHeight;
+          const currentY = Math.max(pos.y, pos.y + jumpOffset);
 
-        dummy.position.set(pos.x, currentY + 0.05, pos.z);
-        dummy.rotation.set(0, 0, 0);
-        dummy.scale.set(1, 1, 1);
-        dummy.updateMatrix();
-        bodiesInstanced.setMatrixAt(i, dummy.matrix);
+          // Body/head orientation is static: update only the translation in each matrix.
+          bodiesInstanced.instanceMatrix.array[i * 16 + 13] = currentY + 0.05;
+          headsInstanced.instanceMatrix.array[i * 16 + 13] = currentY + 0.55;
 
-        dummy.position.set(pos.x, currentY + 0.55, pos.z);
-        dummy.updateMatrix();
-        headsInstanced.setMatrixAt(i, dummy.matrix);
+          if (i % 10 === 0 && flagIdx < flagCount) {
+            const waveAngle = Math.sin(elapsedTime * 8 + pos.phase) * 0.5;
+            dummy.position.set(pos.x + 0.4, currentY + 0.8, pos.z + 0.2);
+            dummy.rotation.set(0, waveAngle, waveAngle * 0.5);
+            dummy.updateMatrix();
+            flagsInstanced.setMatrixAt(flagIdx, dummy.matrix);
+            flagIdx++;
+          }
+        });
 
-        if (i % 10 === 0 && flagIdx < flagCount) {
-          const waveAngle = Math.sin(elapsedTime * 8 + pos.phase) * 0.5;
-          dummy.position.set(pos.x + 0.4, currentY + 0.8, pos.z + 0.2);
-          dummy.rotation.set(0, waveAngle, waveAngle * 0.5);
-          dummy.updateMatrix();
-          flagsInstanced.setMatrixAt(flagIdx, dummy.matrix);
-          flagIdx++;
-        }
-      });
+        bodiesInstanced.instanceMatrix.needsUpdate = true;
+        headsInstanced.instanceMatrix.needsUpdate = true;
+        flagsInstanced.instanceMatrix.needsUpdate = true;
 
-      bodiesInstanced.instanceMatrix.needsUpdate = true;
-      headsInstanced.instanceMatrix.needsUpdate = true;
-      flagsInstanced.instanceMatrix.needsUpdate = true;
+      }
 
       renderer.render(scene, camera);
     };

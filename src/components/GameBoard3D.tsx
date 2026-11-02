@@ -17,10 +17,8 @@ export default function GameBoard3D() {
     "aiming" | "timing" | "shooting" | "result"
   >("aiming");
 
-  // Nhịp 1: Chọn hướng sút (0 đến 1)
-  const [aimValue, setAimValue] = useState(0.5);
-  // Nhịp 2: Vòng canh nhịp chất lượng (1 đến 3)
-  const [scaleValue, setScaleValue] = useState(3);
+  // Frame-by-frame controls are read directly by the 3D loop, without React renders.
+  const controlsRef = useRef({ aimValue: 0.5, scaleValue: 3 });
 
   const [resultMsg, setResultMsg] = useState("");
   const [ballTarget, setBallTarget] = useState<[number, number, number]>([
@@ -50,33 +48,31 @@ export default function GameBoard3D() {
       previousTime = time;
       // PHASE 1: Quét mũi tên chọn hướng sút (Góc sút)
       if (phase === "aiming") {
-        setAimValue((prev) => {
-          let next = prev + 0.025 * frameScale * aimDirRef.current;
-          if (next >= 1) {
-            next = 1;
-            aimDirRef.current = -1;
-          }
-          if (next <= 0) {
-            next = 0;
-            aimDirRef.current = 1;
-          }
-          return next;
-        });
+        const prev = controlsRef.current.aimValue;
+        let next = prev + 0.025 * frameScale * aimDirRef.current;
+        if (next >= 1) {
+          next = 1;
+          aimDirRef.current = -1;
+        }
+        if (next <= 0) {
+          next = 0;
+          aimDirRef.current = 1;
+        }
+        controlsRef.current.aimValue = next;
       }
       // PHASE 2: Phóng to/thu nhỏ Vòng Canh Nhịp Chất Lượng (Quality Ring)
       else if (phase === "timing") {
-        setScaleValue((prev) => {
-          let next = prev + ringSpeed * frameScale * scaleDirRef.current;
-          if (next >= 3) {
-            next = 3;
-            scaleDirRef.current = -1;
-          }
-          if (next <= 1) {
-            next = 1;
-            scaleDirRef.current = 1;
-          }
-          return next;
-        });
+        const prev = controlsRef.current.scaleValue;
+        let next = prev + ringSpeed * frameScale * scaleDirRef.current;
+        if (next >= 3) {
+          next = 3;
+          scaleDirRef.current = -1;
+        }
+        if (next <= 1) {
+          next = 1;
+          scaleDirRef.current = 1;
+        }
+        controlsRef.current.scaleValue = next;
       }
       animId = requestAnimationFrame(loop);
     };
@@ -94,7 +90,7 @@ export default function GameBoard3D() {
     // NHỊP 1: BẤM LẦN 1 -> CHỐT HƯỚNG SÚT
     if (phase === "aiming") {
       // Chuyển aimValue (0 -> 1) thành tọa độ ngang khung thành X (-3.2m đến +3.2m)
-      chosenTargetX.current = -3.3 + aimValue * 6.6;
+      chosenTargetX.current = -3.3 + controlsRef.current.aimValue * 6.6;
       setPhase("timing"); // Chuyển sang nhịp 2
     }
     // NHỊP 2: BẤM LẦN 2 -> CHỐT CHẤT LƯỢNG CÚ SÚT & THỰC HIỆN SÚT
@@ -102,7 +98,7 @@ export default function GameBoard3D() {
       setPhase("shooting");
       setShooting(true);
 
-      const hitValue = scaleValue;
+      const hitValue = controlsRef.current.scaleValue;
       const rand = Math.random();
       let shotQuality: "on_target" | "miss" | "post";
 
@@ -159,8 +155,8 @@ export default function GameBoard3D() {
     setResultMsg({ save: "🧤 CẢN PHÁ!", goal: "⚽ VÀOOOOOO!", post: "💥 CỘT DỌC!", miss: "❌ TRƯỢT!" }[outcome]);
     resultTimer.current = setTimeout(() => {
       setResultMsg("");
-      setScaleValue(1);
-      setAimValue(0.5);
+      controlsRef.current.scaleValue = 1;
+      controlsRef.current.aimValue = 0.5;
       setPhase("aiming");
       shotResolved.current = false;
       recordShot(outcome === "save" ? "miss" : outcome);
@@ -191,8 +187,9 @@ export default function GameBoard3D() {
         <Penalty3D
           onShotResolved={onShotResolved}
           phase={phase}
-          aimValue={aimValue}
-          scaleValue={scaleValue}
+          controlsRef={controlsRef}
+          aimValue={controlsRef.current.aimValue}
+          scaleValue={controlsRef.current.scaleValue}
           ballTarget={ballTarget}
           jerseyColor={currentPlayer?.jerseyColor || "bg-red-600"}
           players={players}

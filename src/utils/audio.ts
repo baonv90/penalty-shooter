@@ -1,11 +1,24 @@
 let audioCtx: AudioContext | null = null;
 let isMuted = false;
 let ambientInterval: any = null;
+const noiseBuffers = new Map<number, AudioBuffer>();
+function getNoiseBuffer(duration: number): AudioBuffer {
+  const cached = noiseBuffers.get(duration);
+  if (cached) return cached;
+  const buffer = audioCtx!.createBuffer(1, Math.ceil(audioCtx!.sampleRate * duration), audioCtx!.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+  noiseBuffers.set(duration, buffer);
+  return buffer;
+}
 
 export const initAudio = () => {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext ||
       (window as any).webkitAudioContext)();
+    // Prepare crowd noise once, outside the shot animation loop.
+    getNoiseBuffer(1.5);
+    getNoiseBuffer(2);
   }
 };
 
@@ -27,12 +40,7 @@ export const startAmbientCrowd = () => {
   ambientInterval = setInterval(() => {
     if (isMuted || !audioCtx) return;
     try {
-      const bufferSize = audioCtx.sampleRate * 1.5;
-      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) {
-        data[i] = Math.random() * 2 - 1;
-      }
+      const buffer = getNoiseBuffer(1.5);
 
       const noise = audioCtx.createBufferSource();
       noise.buffer = buffer;
@@ -108,12 +116,7 @@ export const playCheer = () => {
 
   const now = audioCtx.currentTime;
   // Tạo tiếng hú reo từ đám đông bằng White Noise kết hợp bộ lọc
-  const bufferSize = audioCtx.sampleRate * 2;
-  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-  const data = buffer.getChannelData(0);
-  for (let i = 0; i < bufferSize; i++) {
-    data[i] = Math.random() * 2 - 1;
-  }
+  const buffer = getNoiseBuffer(2);
 
   const noise = audioCtx.createBufferSource();
   noise.buffer = buffer;
@@ -157,12 +160,7 @@ export const playGroan = () => {
   if (!audioCtx) return;
 
   const now = audioCtx.currentTime;
-  const bufferSize = audioCtx.sampleRate * 1.5;
-  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-  const data = buffer.getChannelData(0);
-  for (let i = 0; i < bufferSize; i++) {
-    data[i] = Math.random() * 2 - 1;
-  }
+  const buffer = getNoiseBuffer(1.5);
 
   const noise = audioCtx.createBufferSource();
   noise.buffer = buffer;

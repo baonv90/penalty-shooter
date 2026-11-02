@@ -8,6 +8,8 @@ import { playCheer, playGroan } from "../utils/audio";
 import { StadiumData } from "../utils/models";
 
 export interface PhysicsElements {
+  updateSurroundings?: (delta: number, active: boolean) => void;
+  updateEntrance?: (delta: number) => boolean;
   scene: THREE.Scene;
   camera: THREE.Camera;
   renderer: THREE.WebGLRenderer;
@@ -67,6 +69,8 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<Penalty3DProp
       const delta = Math.min(clock.getDelta(), 0.1);
       if (document.hidden) return;
       const time = clock.elapsedTime;
+      const entering = elements.updateEntrance?.(delta) ?? false;
+      elements.updateSurroundings?.(delta, entering);
 
       // Replace only the keeper; preserve the renderer, pitch, stadium and textures.
       if (propsRef.current.gkType !== keeperType) {
@@ -108,7 +112,7 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<Penalty3DProp
       const scaleValue = propsRef.current.controlsRef?.current.scaleValue ?? propsRef.current.scaleValue;
 
       // --- 1. HIỆU ỨNG KHÓI CHO CHỒN (SKUNK) ---
-      if (smokeGroup) smokeGroup.visible = keeperType === "skunk";
+      if (smokeGroup) smokeGroup.visible = !entering && keeperType === "skunk";
       if (smokeGroup?.visible) {
         smokeGroup.rotation.z += delta * 0.5; // Xoay vòng từ từ
         smokeGroup.children.forEach((child, idx) => {
@@ -129,11 +133,11 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<Penalty3DProp
       }
 
       // NHỊP 1: Định hướng
-      aimArrowGroup.visible = phase === "aiming";
+      aimArrowGroup.visible = !entering && !propsRef.current.introActive && phase === "aiming";
       aimArrowGroup.rotation.y = (aimValue - 0.5) * -Math.PI * 0.8;
 
       // NHỊP 2: Vòng canh nhịp 3D
-      timingRingGroup.visible = phase === "timing";
+      timingRingGroup.visible = !entering && phase === "timing";
       if (phase === "timing") {
         const currentScale = scaleValue ?? 1;
         timingRingGroup.scale.set(currentScale, currentScale, currentScale);

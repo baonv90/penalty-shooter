@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { ShotOutcome } from "../utils/penaltyPhysics";
+import { randomizeShotQuality } from "../utils/shotQuality";
 import Penalty3D from "./Penalty3D";
 import { useGameStore } from "../store/gameStore";
 
@@ -20,6 +21,9 @@ export default function GameBoard3D() {
   // Frame-by-frame controls are read directly by the 3D loop, without React renders.
   const controlsRef = useRef({ aimValue: 0.5, scaleValue: 3 });
 
+  const [introActive, setIntroActive] = useState(true);
+  const finishIntro = useCallback(() => setIntroActive(false), []);
+
   const [resultMsg, setResultMsg] = useState("");
   const [ballTarget, setBallTarget] = useState<[number, number, number]>([
     0, 0, 0,
@@ -38,7 +42,7 @@ export default function GameBoard3D() {
   // VÒNG LẶP ANIMATION HOẠT ĐỘNG DỰA THEO PHASE
   // ---------------------------------------------------------
   useEffect(() => {
-    if (gamePhase !== "playing" || (phase !== "aiming" && phase !== "timing")) return;
+    if (introActive || gamePhase !== "playing" || (phase !== "aiming" && phase !== "timing")) return;
 
     let animId: number;
 
@@ -79,18 +83,21 @@ export default function GameBoard3D() {
 
     animId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animId);
-  }, [phase, gamePhase, ringSpeed]);
+  }, [phase, gamePhase, ringSpeed, introActive]);
 
   // ---------------------------------------------------------
   // XỬ LÝ HÀNH ĐỘNG NHẤN PHÍM / CLICK (2 NHỊP)
   // ---------------------------------------------------------
   const handleInput = () => {
-    if (gamePhase !== "playing" || shotResolved.current) return;
+    if (introActive || gamePhase !== "playing" || shotResolved.current) return;
 
     // NHỊP 1: BẤM LẦN 1 -> CHỐT HƯỚNG SÚT
     if (phase === "aiming") {
       // Chuyển aimValue (0 -> 1) thành tọa độ ngang khung thành X (-3.2m đến +3.2m)
       chosenTargetX.current = -3.3 + controlsRef.current.aimValue * 6.6;
+      const quality = randomizeShotQuality();
+      controlsRef.current.scaleValue = quality.scaleValue;
+      scaleDirRef.current = quality.direction;
       setPhase("timing"); // Chuyển sang nhịp 2
     }
     // NHỊP 2: BẤM LẦN 2 -> CHỐT CHẤT LƯỢNG CÚ SÚT & THỰC HIỆN SÚT
@@ -155,7 +162,9 @@ export default function GameBoard3D() {
     setResultMsg({ save: "🧤 CẢN PHÁ!", goal: "⚽ VÀOOOOOO!", post: "💥 CỘT DỌC!", miss: "❌ TRƯỢT!" }[outcome]);
     resultTimer.current = setTimeout(() => {
       setResultMsg("");
-      controlsRef.current.scaleValue = 1;
+      const quality = randomizeShotQuality();
+      controlsRef.current.scaleValue = quality.scaleValue;
+      scaleDirRef.current = quality.direction;
       controlsRef.current.aimValue = 0.5;
       setPhase("aiming");
       shotResolved.current = false;
@@ -178,13 +187,15 @@ export default function GameBoard3D() {
 
   return (
     <div
-      className="flex flex-col items-center justify-center bg-slate-950 text-white select-none relative overflow-hidden"
+      className="w-full h-full min-h-0 flex flex-col items-center justify-center bg-slate-950 text-white select-none relative overflow-hidden"
       onClick={handleInput}
     >
       {/* Frame Game 3D */}
-      <div className="w-[1350px] h-[600px] relative overflow-hidden rounded-2xl shadow-2xl border border-slate-800 bg-slate-900 flex items-center justify-center">
+      <div className="w-full max-w-[1350px] h-full min-h-0 relative overflow-hidden rounded-2xl shadow-2xl border border-slate-800 bg-slate-900 flex items-center justify-center">
         {/* Truyền gkTargetX để thủ môn thực sự bay người */}
         <Penalty3D
+          introActive={introActive}
+          onIntroComplete={finishIntro}
           onShotResolved={onShotResolved}
           phase={phase}
           controlsRef={controlsRef}
@@ -196,6 +207,23 @@ export default function GameBoard3D() {
           gkType={currentGK?.gkType || "human"}
           gkTargetX={gkTargetX}
         />
+
+        {introActive && (
+          <div className="absolute inset-0 z-20 pointer-events-none bg-gradient-to-b from-slate-950/35 via-transparent to-slate-950/60">
+            <div className="absolute top-6 left-6 text-white">
+              <p className="text-xs tracking-[0.3em] uppercase text-green-300">Match day</p>
+              <h2 className="text-2xl sm:text-4xl font-black mt-1">PENALTY ARENA</h2>
+              <p className="text-sm text-slate-200 mt-2">{players[0]?.name} vs {players[1]?.name}</p>
+            </div>
+            <button
+              type="button"
+              className="absolute bottom-20 sm:bottom-6 left-6 pointer-events-auto rounded-full border border-white/30 bg-slate-950/60 px-5 py-2.5 text-sm font-bold hover:bg-slate-800"
+              onClick={(event) => { event.stopPropagation(); finishIntro(); }}
+            >
+              Bỏ qua giới thiệu →
+            </button>
+          </div>
+        )}
 
         {/* Thông báo kết quả sút */}
         {resultMsg && (

@@ -14,11 +14,16 @@ import {
   createPitchLines,
 } from "../utils/models";
 import { createGoalkeeper } from "../utils/goalkeepers"; // <-- Import mới
+import { useStadiumEntrance } from "../hooks/useStadiumEntrance";
+import { createStadiumActivity } from "./stadium/createStadiumActivity";
+import { createStadiumSurroundings } from "./stadium/createStadiumSurroundings";
 import { usePenaltyPhysics } from "../hooks/usePenaltyPhysics";
 import { BALL_RADIUS, disposeScene, ShotOutcome } from "../utils/penaltyPhysics";
 import { GKType, Player } from "../store/gameStore";
 
 export interface Penalty3DProps {
+  introActive?: boolean;
+  onIntroComplete?: () => void;
   controlsRef?: React.MutableRefObject<{ aimValue: number; scaleValue: number }>;
   onShotResolved?: (outcome: ShotOutcome) => void;
   phase: "aiming" | "timing" | "power" | "shooting" | "result";
@@ -32,6 +37,8 @@ export interface Penalty3DProps {
 }
 
 export default function Penalty3D({
+  introActive = false,
+  onIntroComplete,
   controlsRef,
   onShotResolved,
   phase,
@@ -47,6 +54,8 @@ export default function Penalty3D({
 
   // Sync Props xuống Hook
   const propsRef = useRef<Penalty3DProps>({
+    introActive,
+    onIntroComplete,
     controlsRef,
     players,
     onShotResolved,
@@ -60,6 +69,8 @@ export default function Penalty3D({
   });
   useEffect(() => {
     propsRef.current = {
+      introActive,
+      onIntroComplete,
       controlsRef,
       players,
       onShotResolved,
@@ -71,9 +82,10 @@ export default function Penalty3D({
       gkType,
       gkTargetX,
     };
-  }, [phase, aimValue, scaleValue, ballTarget, gkType, jerseyColor, gkTargetX, players, onShotResolved, controlsRef]);
+  }, [phase, aimValue, scaleValue, ballTarget, gkType, jerseyColor, gkTargetX, players, onShotResolved, controlsRef, introActive, onIntroComplete]);
 
   const { startAnimation } = usePenaltyPhysics(propsRef);
+  const createEntrance = useStadiumEntrance();
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -84,7 +96,7 @@ export default function Penalty3D({
     const height = Math.max(container.clientHeight, 1);
 
     // 1. Perspective Camera aspect ratio calculation
-    const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 150);
+    const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 800);
     camera.position.set(0, 3.5, 9);
     camera.lookAt(0, 1.2, -4);
 
@@ -96,6 +108,7 @@ export default function Penalty3D({
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color("#87CEEB");
+    scene.fog = new THREE.Fog("#87CEEB", 220, 600);
 
     // Tối ưu hóa bóng đổ để tránh mỏi GPU TV
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -343,9 +356,24 @@ export default function Penalty3D({
       getHexColor(propsRef.current.players[1]?.jerseyColor ?? "bg-blue-600")
     );
     scene.add(stadiumData.stadiumGroup);
+    scene.add(createStadiumSurroundings(
+      getHexColor(propsRef.current.players[0]?.jerseyColor),
+      getHexColor(propsRef.current.players[1]?.jerseyColor ?? "bg-blue-600")
+    ));
+    const activity = createStadiumActivity(
+      getHexColor(propsRef.current.players[0]?.jerseyColor),
+      getHexColor(propsRef.current.players[1]?.jerseyColor ?? "bg-blue-600")
+    );
+    scene.add(activity.group);
+    const updateEntrance = propsRef.current.introActive ? createEntrance(camera, {
+      shouldSkip: () => !propsRef.current.introActive,
+      onComplete: () => propsRef.current.onIntroComplete?.(),
+    }) : undefined;
 
     // START HOOK VẬT LÝ
     const cleanupAnimation = startAnimation({
+      updateEntrance,
+      updateSurroundings: activity.update,
       scene,
       camera,
       renderer,
@@ -385,6 +413,7 @@ export default function Penalty3D({
     return () => {
       resizeObserver.disconnect();
       cleanupAnimation();
+      updateEntrance?.dispose();
       disposeScene(scene);
       dirLight.shadow.dispose();
       renderer.dispose();
@@ -392,12 +421,12 @@ export default function Penalty3D({
         container.removeChild(renderer.domElement);
       }
     };
-  }, [startAnimation]);
+  }, [startAnimation, createEntrance]);
 
   return (
     <div
       ref={containerRef}
-      className="w-[1350px] h-[60vh] min-h-[500px] relative overflow-hidden shadow-2xl"
+      className="w-full h-full min-h-0 relative overflow-hidden shadow-2xl"
     />
   );
 }

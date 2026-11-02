@@ -22,6 +22,11 @@ export const initAudio = () => {
   }
 };
 
+export const getAudioContext = (): AudioContext => {
+  initAudio();
+  return audioCtx!;
+};
+
 export const toggleMute = () => {
   isMuted = !isMuted;
   if (isMuted) {

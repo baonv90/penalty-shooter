@@ -30,7 +30,6 @@ export default function Settings() {
 
   const handleStart = () => {
     initAudio();
-    playWhistle();
     updateSettings(diff, ball, method);
     startGame();
   };
@@ -47,7 +46,10 @@ export default function Settings() {
 
       <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3 mb-4">
         <div>
-          <label htmlFor="difficulty" className="block text-xs font-bold text-gray-400 mb-2 uppercase">
+          <label
+            htmlFor="difficulty"
+            className="block text-xs font-bold text-gray-400 mb-2 uppercase"
+          >
             Độ khó
           </label>
           <select
@@ -62,7 +64,10 @@ export default function Settings() {
           </select>
         </div>
         <div>
-          <label htmlFor="ball-type" className="block text-xs font-bold text-gray-400 mb-2 uppercase">
+          <label
+            htmlFor="ball-type"
+            className="block text-xs font-bold text-gray-400 mb-2 uppercase"
+          >
             Kiểu bóng
           </label>
           <select
@@ -140,13 +145,32 @@ export default function Settings() {
               ))}
             </div>
             <fieldset className="mt-3 min-w-0">
-              <legend className="text-xs font-bold text-slate-400 mb-2 uppercase">Thủ môn</legend>
+              <legend className="text-xs font-bold text-slate-400 mb-2 uppercase">
+                Thủ môn
+              </legend>
               <div className="grid grid-cols-3 gap-2">
-                {([
-                  { type: "human", icon: "🧤", label: "Human", trait: "Cân bằng" },
-                  { type: "bear", icon: "🐻", label: "Bear", trait: "To · Chậm" },
-                  { type: "skunk", icon: "🦨", label: "Skunk", trait: "Nhỏ · Nhanh" },
-                ] as const).map(({ type, icon, label, trait }) => (
+                {(
+                  [
+                    {
+                      type: "human",
+                      icon: "🧤",
+                      label: "Human",
+                      trait: "Cân bằng",
+                    },
+                    {
+                      type: "bear",
+                      icon: "🐻",
+                      label: "Bear",
+                      trait: "To · Chậm",
+                    },
+                    {
+                      type: "skunk",
+                      icon: "🦨",
+                      label: "Skunk",
+                      trait: "Nhỏ · Nhanh",
+                    },
+                  ] as const
+                ).map(({ type, icon, label, trait }) => (
                   <button
                     key={type}
                     type="button"
@@ -158,9 +182,13 @@ export default function Settings() {
                         : "border-slate-700 bg-slate-800 hover:border-slate-500"
                     }`}
                   >
-                    <span aria-hidden="true" className="block text-3xl mb-1">{icon}</span>
+                    <span aria-hidden="true" className="block text-3xl mb-1">
+                      {icon}
+                    </span>
                     <span className="block text-xs font-bold">{label}</span>
-                    <span className="block text-[10px] text-slate-400 mt-1">{trait}</span>
+                    <span className="block text-[10px] text-slate-400 mt-1">
+                      {trait}
+                    </span>
                   </button>
                 ))}
               </div>

@@ -118,14 +118,11 @@ export default function PenaltySpot() {
     const hitValue = scaleValue.get();
     const rand = Math.random();
     let shotQuality: "on_target" | "miss" | "post";
-    const isLiam = players[turn].name.toLowerCase() === "liam";
 
     // 1. Xác định chất lượng cú sút dựa vào vòng timing
-    // Chỉnh sửa trong handleShoot():
-    if (hitValue <= (isLiam ? 2.0 : 1.3)) {
-      // Mở rộng ngưỡng từ 1.3 lên 1.6
+    if (hitValue <= 1.3) {
       shotQuality = rand < 0.95 ? "on_target" : rand < 0.98 ? "post" : "miss"; // Tăng tỉ lệ trúng lên 95%
-    } else if (hitValue <= (isLiam ? 2.4 : 1.6)) {
+    } else if (hitValue <= 1.6) {
       shotQuality = rand < 0.8 ? "on_target" : rand < 0.9 ? "post" : "miss";
     } else {
       shotQuality = rand < 0.4 ? "on_target" : rand < 0.7 ? "post" : "miss";

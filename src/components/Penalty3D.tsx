@@ -19,9 +19,11 @@ import { createStadiumActivity } from "./stadium/createStadiumActivity";
 import { createStadiumSurroundings } from "./stadium/createStadiumSurroundings";
 import { usePenaltyPhysics } from "../hooks/usePenaltyPhysics";
 import { BALL_RADIUS, disposeScene, ShotOutcome } from "../utils/penaltyPhysics";
-import { GKType, Player } from "../store/gameStore";
+import { Difficulty, GKType, Player } from "../store/gameStore";
 
 export interface Penalty3DProps {
+  shotSpeed?: number;
+  difficulty?: Difficulty;
   introActive?: boolean;
   onIntroComplete?: () => void;
   controlsRef?: React.MutableRefObject<{ aimValue: number; scaleValue: number }>;
@@ -37,6 +39,8 @@ export interface Penalty3DProps {
 }
 
 export default function Penalty3D({
+  shotSpeed = 19,
+  difficulty = "medium",
   introActive = false,
   onIntroComplete,
   controlsRef,
@@ -54,6 +58,8 @@ export default function Penalty3D({
 
   // Sync Props xuống Hook
   const propsRef = useRef<Penalty3DProps>({
+    shotSpeed,
+    difficulty,
     introActive,
     onIntroComplete,
     controlsRef,
@@ -69,6 +75,8 @@ export default function Penalty3D({
   });
   useEffect(() => {
     propsRef.current = {
+      shotSpeed,
+      difficulty,
       introActive,
       onIntroComplete,
       controlsRef,
@@ -82,7 +90,7 @@ export default function Penalty3D({
       gkType,
       gkTargetX,
     };
-  }, [phase, aimValue, scaleValue, ballTarget, gkType, jerseyColor, gkTargetX, players, onShotResolved, controlsRef, introActive, onIntroComplete]);
+  }, [phase, aimValue, scaleValue, ballTarget, gkType, jerseyColor, gkTargetX, players, onShotResolved, controlsRef, introActive, onIntroComplete, shotSpeed, difficulty]);
 
   const { startAnimation } = usePenaltyPhysics(propsRef);
   const createEntrance = useStadiumEntrance();
@@ -245,7 +253,9 @@ export default function Penalty3D({
     rightNet.position.set(gwidth / 2, gheight / 2, -depth / 3);
 
     netGroup.add(backNet, topNet, leftNet, rightNet);
-    goalGroup.add(postL, postR, crossbar, netGroup);
+    const goalFrame = new THREE.Group();
+    goalFrame.add(postL, postR, crossbar);
+    goalGroup.add(goalFrame, netGroup);
     scene.add(goalGroup);
 
     // 5. QUẢ BÓNG
@@ -342,8 +352,8 @@ export default function Penalty3D({
 
     // Giơ tay nếu là Human
     if (gkData.armL && gkData.armR) {
-      gkData.armL.rotation.z = gkData.rig ? -0.7 : 0.5;
-      gkData.armR.rotation.z = gkData.rig ? 0.7 : -0.5;
+      gkData.armL.rotation.z = -0.7;
+      gkData.armR.rotation.z = 0.7;
     }
 
     const gkGroup = new THREE.Group();
@@ -385,6 +395,7 @@ export default function Penalty3D({
       kicker,
       gkData,
       gkGroup,
+      goalFrame,
       smokeGroup,
       pShirtMat,
       pNumberMat,

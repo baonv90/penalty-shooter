@@ -7,7 +7,7 @@ import {
   AVAILABLE_COLORS,
   GKType,
 } from "../store/gameStore";
-import { initAudio, playWhistle } from "../utils/audio";
+import { initAudio } from "../utils/audio";
 
 export default function Settings() {
   const {

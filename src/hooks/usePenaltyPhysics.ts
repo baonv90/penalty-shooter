@@ -4,7 +4,9 @@ import { createGoalkeeper, animateGoalkeeper, type GKData } from "../utils/goalk
 import { BALL_RADIUS, createKeeperCollision, disposeScene } from "../utils/penaltyPhysics";
 import * as THREE from "three";
 import { getHexColor, createJerseyTexture } from "../utils/textures";
-import { playCheer, playGroan } from "../utils/audio";
+import { animateKicker, KICK_CONTACT_TIME } from "../utils/playerAnimation";
+import { GOAL, SHOT_GRAVITY, launchShot, keeperReaction, isInsideGoal } from "../utils/shotSimulation";
+import { playCheer, playGroan, playKick } from "../utils/audio";
 import { StadiumData } from "../utils/models";
 
 export interface PhysicsElements {
@@ -16,6 +18,7 @@ export interface PhysicsElements {
   ballGroup: THREE.Group;
   pGroup: THREE.Group;
   gkGroup: THREE.Group;
+  goalFrame: THREE.Group;
   aimArrowGroup: THREE.Group;
   timingRingGroup: THREE.Group;
   net: THREE.Group;
@@ -48,7 +51,25 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<Penalty3DProp
 
     // --- KHAI BÁO CÁC BIẾN VA CHẠM VẬT LÝ ---
     let collidesWithKeeper = createKeeperCollision(elements.gkGroup);
-    const currentTarget = new THREE.Vector3();
+    const contactPoint = new THREE.Vector3();
+    const frameCollision = createKeeperCollision(elements.goalFrame);
+    let shotElapsed = 0;
+    let flightElapsed = 0;
+    let hitPost = false;
+    let postCooldown = 0;
+    const divePose = { elapsed: 0, duration: 0.4, targetY: 1, targetX: 0 };
+    const findContact = (start: THREE.Vector3, end: THREE.Vector3, collide: typeof frameCollision) => {
+      if (!collide(start, end, BALL_RADIUS, true)) return Infinity;
+      let low = 0;
+      let high = 1;
+      for (let i = 0; i < 7; i++) {
+        const middle = (low + high) / 2;
+        contactPoint.lerpVectors(start, end, middle);
+        if (collide(start, contactPoint, BALL_RADIUS, true)) high = middle;
+        else low = middle;
+      }
+      return high;
+    };
     const nextPosition = new THREE.Vector3();
     const direction = new THREE.Vector3();
     const dummy = new THREE.Object3D();
@@ -150,115 +171,138 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<Penalty3DProp
         innerCircleMat.color.setHex(ringHexColor);
       }
 
-      // CẦU THỦ CHẠY ĐÀ VÀ RESET TỐC BIẾN
-      if (phase === "shooting" || phase === "result") {
-        if (pGroup.position.z > 2.5) {
-          pGroup.position.z -= delta * 11;
-          pGroup.position.x -= delta * 3.3;
-          const runCycle = time * 15;
-          kicker.legL.rotation.x = Math.sin(runCycle) * 0.8;
-          kicker.legR.rotation.x = Math.sin(runCycle + Math.PI) * 0.8;
-        } else {
-          if (!state.ballStartKick) state.ballStartKick = true;
-          kicker.legR.rotation.x = THREE.MathUtils.lerp(
-            kicker.legR.rotation.x,
-            -2,
-            delta * 20
-          );
-          kicker.legL.rotation.x = 0;
+      const shooting = phase === "shooting" || phase === "result";
+      const wasKicked = state.ballStartKick;
+      if (shooting) {
+        shotElapsed += delta;
+        animateKicker(kicker, pGroup, shotElapsed, ballTarget[0]);
+        if (!state.ballStartKick && shotElapsed >= KICK_CONTACT_TIME) {
+          state.ballStartKick = true;
+          launchShot(state.reboundVel, ballTarget, propsRef.current.shotSpeed ?? 19);
+          playKick();
         }
       } else {
+        shotElapsed = 0;
+        flightElapsed = 0;
+        hitPost = false;
+        postCooldown = 0;
         state.ballStartKick = false;
         state.hasBounced = false;
         resolved = false;
         goalScored = false;
         state.netBulgeTime = 0;
-
-        ballGroup.position.set(0, 0.15, 2);
+        ballGroup.position.set(0, BALL_RADIUS, 2);
         ballGroup.rotation.set(0, 0, 0);
         state.reboundVel.set(0, 0, 0);
-
-        pGroup.position.set(0.5, 0, 4.5);
-        kicker.legL.rotation.x = 0;
-        kicker.legR.rotation.x = 0;
-
+        animateKicker(kicker, pGroup, -1, 0);
         gkGroup.position.set(0, 0, -3.9);
       }
 
-      // --- 2. THỦ MÔN BAY NGƯỜI (Áp dụng Speed Multiplier) ---
-      if (state.ballStartKick) {
-        const safeGkX = Math.max(-2.2, Math.min(2.2, gkTargetX ?? 0));
-        const speedMulti = gkData.speedMultiplier; // Lấy hệ số tốc độ (Gấu chậm, chồn nhanh)
-
-        // Cập nhật vị trí X của thủ môn
-        gkGroup.position.x +=
-          (safeGkX - gkGroup.position.x) * (1 - Math.exp(-delta * 7 * speedMulti));
+      // A committed, delayed push-off: the keeper cannot follow subsequent ball movement.
+      const reaction = keeperReaction(propsRef.current.difficulty ?? "medium", gkData.speedMultiplier);
+      const diveElapsed = shotElapsed - KICK_CONTACT_TIME - reaction;
+      if (shooting && diveElapsed >= 0) {
+        divePose.elapsed = diveElapsed;
+        divePose.duration = 0.4 / Math.sqrt(gkData.speedMultiplier);
+        divePose.targetX = gkTargetX ?? 0;
+        divePose.targetY = ballTarget[1];
+        const progress = THREE.MathUtils.clamp(diveElapsed / divePose.duration, 0, 1);
+        gkGroup.position.x = divePose.targetX * THREE.MathUtils.smoothstep(progress, 0, 1);
+        animateGoalkeeper(gkData, time, delta, true, gkGroup.position.x, divePose);
+      } else {
+        animateGoalkeeper(gkData, time, delta, false, 0);
       }
-      animateGoalkeeper(gkData, time, delta, state.ballStartKick, gkGroup.position.x);
 
-      // --- 3. VẬT LÝ BÓNG BAY & VA CHẠM VỚI THỦ MÔN ---
       if (state.ballStartKick) {
-        // QUỸ ĐẠO BAY CỦA BÓNG
+        // Small integration steps keep gravity, ground bounces and collisions stable on slow frames.
+        let remaining = wasKicked ? delta : Math.max(0, shotElapsed - KICK_CONTACT_TIME);
         if (!state.hasBounced) {
-          currentTarget.set(...ballTarget);
-          const dist = ballGroup.position.distanceTo(currentTarget);
-
-          direction.subVectors(currentTarget, ballGroup.position).normalize();
-          nextPosition.copy(ballGroup.position).addScaledVector(direction, Math.min(delta * 24, dist));
           collidesWithKeeper.prepare();
-          if (collidesWithKeeper(ballGroup.position, nextPosition, BALL_RADIUS, true)) {
-            // Locate first contact along the sweep so rebounds start at the keeper.
-            let low = 0;
-            let high = 1;
-            for (let i = 0; i < 8; i++) {
-              const middle = (low + high) / 2;
-              currentTarget.lerpVectors(ballGroup.position, nextPosition, middle);
-              if (collidesWithKeeper(ballGroup.position, currentTarget, BALL_RADIUS, true)) high = middle;
-              else low = middle;
+          frameCollision.prepare();
+        }
+        while (remaining > 0.000001) {
+          const step = Math.min(remaining, 1 / 120);
+          remaining -= step;
+          flightElapsed += step;
+          postCooldown = Math.max(0, postCooldown - step);
+          nextPosition.copy(ballGroup.position).addScaledVector(state.reboundVel, step);
+          nextPosition.y -= 0.5 * SHOT_GRAVITY * step * step;
+          state.reboundVel.y -= SHOT_GRAVITY * step;
+          if (nextPosition.y < BALL_RADIUS) {
+            nextPosition.y = BALL_RADIUS;
+            state.reboundVel.y = Math.abs(state.reboundVel.y) * 0.45;
+            state.reboundVel.x *= 0.96;
+            state.reboundVel.z *= 0.96;
+          }
+          if (!state.hasBounced) {
+            // Only check contacts up to the instant the whole ball crosses the goal line.
+            const scoringZ = GOAL.z - BALL_RADIUS;
+            const crossing = ballGroup.position.z > scoringZ && nextPosition.z <= scoringZ;
+            const lineFraction = crossing ? (scoringZ - ballGroup.position.z) / (nextPosition.z - ballGroup.position.z) : 1;
+            if (crossing) nextPosition.lerpVectors(ballGroup.position, nextPosition, lineFraction);
+            const keeperHit = findContact(ballGroup.position, nextPosition, collidesWithKeeper);
+            const postHit = postCooldown > 0 ? Infinity : findContact(ballGroup.position, nextPosition, frameCollision);
+            if (keeperHit !== Infinity || postHit !== Infinity) {
+              const save = keeperHit < postHit;
+              ballGroup.position.lerp(nextPosition, Math.min(keeperHit, postHit));
+              state.hasBounced = save;
+              if (save) {
+                // Parry follows incoming momentum, with a small sideways deflection.
+                state.reboundVel.x = state.reboundVel.x * 0.35 + Math.sign(ballGroup.position.x - gkGroup.position.x || 1) * 2;
+                state.reboundVel.y = Math.max(1.5, Math.abs(state.reboundVel.y) * 0.4);
+                state.reboundVel.z = Math.abs(state.reboundVel.z) * 0.4;
+              } else {
+                hitPost = true;
+                postCooldown = 0.045;
+                // Reflect around the nearest post/crossbar axis instead of a random bounce.
+                contactPoint.set(
+                  Math.abs(Math.abs(ballGroup.position.x) - GOAL.halfWidth) < Math.abs(ballGroup.position.y - GOAL.height)
+                    ? Math.sign(ballGroup.position.x) * GOAL.halfWidth : ballGroup.position.x,
+                  Math.abs(Math.abs(ballGroup.position.x) - GOAL.halfWidth) < Math.abs(ballGroup.position.y - GOAL.height)
+                    ? THREE.MathUtils.clamp(ballGroup.position.y, 0, GOAL.height) : GOAL.height,
+                  GOAL.z
+                );
+                direction.subVectors(ballGroup.position, contactPoint).normalize();
+                state.reboundVel.reflect(direction).multiplyScalar(0.65);
+              }
+              playGroan();
+              if (save) resolve("save");
+            } else {
+              ballGroup.position.copy(nextPosition);
+              if (crossing) {
+                state.hasBounced = true;
+                if (isInsideGoal(ballGroup.position.x, ballGroup.position.y, BALL_RADIUS)) {
+                  resolve("goal");
+                  playCheer();
+                  state.reboundVel.multiplyScalar(0.65);
+                } else {
+                  resolve(hitPost ? "post" : "miss");
+                  playGroan();
+                }
+              }
             }
-            ballGroup.position.lerp(nextPosition, high);
-            state.hasBounced = true;
-            playGroan();
-            state.reboundVel.set((Math.random() - 0.5) * 8, Math.random() * 5 + 2, Math.random() * 10 + 5);
-            resolve("save");
           } else {
             ballGroup.position.copy(nextPosition);
-            ballGroup.rotation.x -= delta * 40;
           }
-          if (!state.hasBounced && ballGroup.position.distanceToSquared(currentTarget) < 0.0001) {
-            state.hasBounced = true;
-            const targetZ = ballTarget[2];
-            const targetX = ballTarget[0];
-
-            if (targetZ <= -6) {
-              resolve("miss");
-              playGroan();
-              state.reboundVel.set(targetX > 0 ? 4 : -4, -1, -6);
-            } else if (targetZ < -4.5) {
-              resolve("goal");
-              playCheer();
-              state.reboundVel.set((Math.random() - 0.5) * 1.5, -4, 2);
-              state.netBulgeTime = 0.2;
-            } else if (targetZ > -4.2 && targetZ < -3.8) {
-              resolve("post");
-              playGroan();
-              const bounceX = targetX > 0 ? -3 : 3;
-              state.reboundVel.set(bounceX + (Math.random() - 0.5) * 3, 4, 8);
-            }
+          if (goalScored && ballGroup.position.z < GOAL.z - 1.5 + BALL_RADIUS) {
+            ballGroup.position.z = GOAL.z - 1.5 + BALL_RADIUS;
+            state.reboundVel.z = Math.abs(state.reboundVel.z) * 0.2;
+            state.reboundVel.x *= 0.5;
+            state.netBulgeTime = 0.35;
           }
-        } else {
-          // BÓNG ĐANG RƠI (REBOUND) SAU KHI CHẠM LƯỚI / CỘT / THỦ MÔN
-          ballGroup.position.addScaledVector(state.reboundVel, delta);
-          state.reboundVel.y -= 18 * delta; // Trọng lực kéo xuống
-
           if (ballGroup.position.y < BALL_RADIUS) {
             ballGroup.position.y = BALL_RADIUS;
-            state.reboundVel.y *= -0.55; // Nảy lên
-            state.reboundVel.x *= 0.8; // Ma sát giảm tốc
-            state.reboundVel.z *= 0.8;
+            state.reboundVel.y = Math.abs(state.reboundVel.y) * 0.45;
+            state.reboundVel.x *= 0.96;
+            state.reboundVel.z *= 0.96;
           }
-          ballGroup.rotation.x += state.reboundVel.z * delta * 2;
-          ballGroup.rotation.z -= state.reboundVel.x * delta * 2;
+          ballGroup.rotation.x += state.reboundVel.z * step / BALL_RADIUS;
+          ballGroup.rotation.z -= state.reboundVel.x * step / BALL_RADIUS;
+          if (!resolved && (flightElapsed > 3 || (flightElapsed > 0.3 && ballGroup.position.z > 3.5))) {
+            state.hasBounced = true;
+            resolve(hitPost ? "post" : "miss");
+            playGroan();
+          }
         }
       }
 

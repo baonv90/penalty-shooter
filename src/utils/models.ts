@@ -199,24 +199,39 @@ export function createHumanoid(
 
   body.add(numberMesh);
 
-  const armGeo = new THREE.CylinderGeometry(0.06, 0.05, 0.5, 16);
-  const armL = new THREE.Mesh(armGeo, skinMat);
-  armL.position.set(-0.3, 0.7, 0);
-  armL.castShadow = true;
-  const armR = new THREE.Mesh(armGeo, skinMat);
-  armR.position.set(0.3, 0.7, 0);
-  armR.castShadow = true;
+  // Geometry is offset from joints: rotations now happen at hips, knees and shoulders.
+  const limb = (x: number, y: number, radius: number, length: number, material: THREE.Material, arm: boolean) => {
+    const pivot = new THREE.Group();
+    pivot.position.set(x, y, 0);
+    const upper = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius * 0.9, length / 2, 12), material);
+    upper.position.y = -length / 4;
+    const joint = new THREE.Group();
+    joint.position.y = -length / 2;
+    const lower = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.9, radius * 0.75, length / 2, 12), material);
+    lower.position.y = -length / 4;
+    const extremity = new THREE.Mesh(
+      new THREE.BoxGeometry(arm ? 0.12 : 0.16, arm ? 0.12 : 0.1, arm ? 0.12 : 0.27),
+      arm ? skinMat : new THREE.MeshStandardMaterial({ color: 0x202a38 })
+    );
+    extremity.position.set(0, -length / 2 + 0.04, arm ? 0 : -0.07);
+    joint.add(lower, extremity);
+    pivot.add(upper, joint);
+    group.add(pivot);
+    return { pivot, joint, extremity };
+  };
+  const leftArm = limb(-0.3, 1, 0.06, 0.5, skinMat, true);
+  const rightArm = limb(0.3, 1, 0.06, 0.5, skinMat, true);
+  const leftLeg = limb(-0.12, 0.5, 0.08, 0.5, shortsMat, false);
+  const rightLeg = limb(0.12, 0.5, 0.08, 0.5, shortsMat, false);
+  group.add(headGroup, body);
+  group.traverse(object => { if (object instanceof THREE.Mesh) object.castShadow = true; });
+  return { group, body, headGroup,
+    armL: leftArm.pivot, armR: rightArm.pivot,
+    elbowL: leftArm.joint, elbowR: rightArm.joint,
+    legL: leftLeg.pivot, legR: rightLeg.pivot,
+    kneeL: leftLeg.joint, kneeR: rightLeg.joint,
+    footL: leftLeg.extremity, footR: rightLeg.extremity };
 
-  const legGeo = new THREE.CylinderGeometry(0.08, 0.07, 0.45, 16);
-  const legL = new THREE.Mesh(legGeo, shortsMat);
-  legL.position.set(-0.12, 0.25, 0);
-  legL.castShadow = true;
-  const legR = new THREE.Mesh(legGeo, shortsMat);
-  legR.position.set(0.12, 0.25, 0);
-  legR.castShadow = true;
-
-  group.add(headGroup, body, armL, armR, legL, legR);
-  return { group, armL, armR, legL, legR, body };
 }
 
 // Keep the existing scene API; the full-field layout lives in one module.

@@ -57,14 +57,14 @@ const checkWinner = (
   const p1Left = Math.max(0, 5 - p1Shots.length);
   const p2Left = Math.max(0, 5 - p2Shots.length);
 
+  // A completed pair decides both the fifth round and sudden death.
+  if (p1Shots.length === p2Shots.length && p1Shots.length >= 5) {
+    if (p1Score > p2Score) return 1;
+    if (p2Score > p1Score) return 2;
+  }
   if (p1Shots.length <= 5 && p2Shots.length <= 5) {
     if (p1Score + p1Left < p2Score) return 2;
     if (p2Score + p2Left < p1Score) return 1;
-  } else {
-    if (p1Shots.length === p2Shots.length) {
-      if (p1Score > p2Score) return 1;
-      if (p2Score > p1Score) return 2;
-    }
   }
   return null;
 };

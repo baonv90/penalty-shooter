@@ -10,6 +10,7 @@ export interface GKData {
   diveHeight?: number;
   armL?: THREE.Object3D;
   armR?: THREE.Object3D;
+  pose?: { head: THREE.Group; legL: THREE.Object3D; legR: THREE.Object3D };
   rig?: {
     head: THREE.Group;
     legL: THREE.Group;
@@ -102,7 +103,42 @@ function createAnimalGK(type: "bear" | "skunk"): GKData {
 }
 
 /** Absolute idle poses and damped dive poses avoid drift and abrupt limb snaps. */
-export function animateGoalkeeper(data: GKData, time: number, delta: number, diving: boolean, x: number) {
+export function animateGoalkeeper(data: GKData, time: number, delta: number, diving: boolean, x: number,
+  dive?: { elapsed: number; duration: number; targetY: number; targetX: number }) {
+  if (dive) {
+    const progress = THREE.MathUtils.clamp(dive.elapsed / Math.max(dive.duration, 0.65), 0, 1);
+    const push = THREE.MathUtils.smoothstep(dive.elapsed / dive.duration / 0.7, 0, 1);
+    const landing = THREE.MathUtils.smoothstep((progress - 0.72) / 0.28, 0, 1);
+    const lateral = Math.min(Math.abs(dive.targetX) / 0.8, 1);
+    const direction = dive.targetX >= 0 ? -1 : 1;
+    const reach = THREE.MathUtils.clamp(dive.targetY / 2.44, 0, 1);
+    data.group.rotation.z = direction * lateral * push * (1.15 + landing * 0.2);
+    data.group.rotation.x = (1 - lateral) * push * 0.16;
+    const lift = Math.sin(progress * Math.PI) * (data.diveHeight ?? 0.55) * (0.3 + reach * 0.7);
+    data.group.position.y = lift + lateral * push * data.scale * 0.35;
+    const armAngle = 0.7 + push * (1.25 + reach * 0.55) - landing * 0.15;
+    if (data.armL) { data.armL.rotation.z = -armAngle; data.armL.rotation.x = -push * 0.25; }
+    if (data.armR) { data.armR.rotation.z = armAngle; data.armR.rotation.x = -push * 0.25; }
+    const pose = data.rig ?? data.pose;
+    if (pose) {
+      pose.head.rotation.z = -data.group.rotation.z * 0.2;
+      pose.legL.rotation.x = -push * 0.45 + landing * 0.15;
+      pose.legR.rotation.x = push * 0.3;
+      pose.legL.rotation.z = -push * 0.2;
+      pose.legR.rotation.z = push * 0.25;
+    }
+    if (data.rig?.tail) data.rig.tail.rotation.x = -push * 0.3;
+    return;
+  }
+  data.group.rotation.x = 0;
+  if (data.armL) data.armL.rotation.x = 0;
+  if (data.armR) data.armR.rotation.x = 0;
+  const idlePose = data.rig ?? data.pose;
+  if (idlePose) {
+    idlePose.legL.rotation.z = idlePose.legR.rotation.z = 0;
+    idlePose.legL.rotation.x = idlePose.legR.rotation.x = 0;
+    idlePose.head.rotation.z = 0;
+  }
   const blend = 1 - Math.exp(-delta * 12 * Math.max(1, data.speedMultiplier));
   const amount = diving ? Math.min(Math.abs(x) / 1.8, 1) : 0;
   const idle = Math.sin(time * (data.rig?.idleSpeed ?? 3));
@@ -111,7 +147,7 @@ export function animateGoalkeeper(data: GKData, time: number, delta: number, div
   data.group.position.y = THREE.MathUtils.lerp(data.group.position.y,
     diving ? Math.sin(amount * Math.PI * 0.7) * (data.diveHeight ?? 0.55) : (idle + 1) * 0.012, blend);
   const armAngle = (data.rig ? 0.7 : 0.5) + amount * 1.8 + (diving ? 0 : idle * 0.07);
-  const armDirection = data.rig ? -1 : 1;
+  const armDirection = -1;
   if (data.armL) data.armL.rotation.z = THREE.MathUtils.lerp(data.armL.rotation.z, armDirection * armAngle, blend);
   if (data.armR) data.armR.rotation.z = THREE.MathUtils.lerp(data.armR.rotation.z, -armDirection * armAngle, blend);
   if (data.rig) {
@@ -144,12 +180,7 @@ function createHumanGK(): GKData {
     false
   );
 
-  // Làm cho tỷ lệ thân thiện với trẻ em (Đầu to hơn 1 chút - Chibi style)
-  // Giả sử human.group.children[0] là headGroup trong createHumanoid của bạn
-  const headGroup = human.group.children[0];
-  if (headGroup) {
-    headGroup.scale.set(1.3, 1.3, 1.3); // Phóng to đầu x1.3
-  }
+  human.headGroup.scale.setScalar(1.3);
 
   return {
     group: human.group,
@@ -157,5 +188,6 @@ function createHumanGK(): GKData {
     speedMultiplier: 1,
     armL: human.armL,
     armR: human.armR,
+    pose: { head: human.headGroup, legL: human.legL, legR: human.legR },
   };
 }

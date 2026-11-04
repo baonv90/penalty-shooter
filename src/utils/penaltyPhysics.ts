@@ -126,7 +126,7 @@ export function createKeeperCollision(root: THREE.Object3D) {
 export function disposeScene(scene: THREE.Object3D) {
   const resources = new Set<{ dispose: () => void }>();
   scene.traverse((object) => {
-    if (!(object instanceof THREE.Mesh)) return;
+    if (!(object instanceof THREE.Mesh) && !(object instanceof THREE.LineSegments)) return;
     resources.add(object.geometry);
     for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
       resources.add(material);

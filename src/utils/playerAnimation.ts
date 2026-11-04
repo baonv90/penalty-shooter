@@ -31,7 +31,7 @@ export function animateKicker(player: PlayerRig, root: THREE.Group, elapsed: num
   const strike = smooth((elapsed - 0.61) / (KICK_CONTACT_TIME - 0.61));
   const follow = smooth((elapsed - KICK_CONTACT_TIME) / 0.16);
   const settle = smooth((elapsed - 0.95) / 0.55);
-  player.legR.rotation.x += (-windup * 0.9 + strike * 1.65 + follow * 0.6) * (1 - settle);
+  player.legR.rotation.x += (-windup * 0.9 + strike * 0.9 + follow * 1.35) * (1 - settle);
   player.kneeR.rotation.x -= windup * (1 - strike) * 0.9;
   player.elbowL.rotation.x = -0.3 - running * 0.35;
   player.elbowR.rotation.x = -0.3 - running * 0.35;

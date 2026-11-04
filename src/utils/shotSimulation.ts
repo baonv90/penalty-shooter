@@ -2,7 +2,7 @@ import * as THREE from "three";
 import type { Difficulty, GKType } from "../store/gameStore";
 
 export const SHOT_GRAVITY = 9.81;
-export const GOAL = { z: -4.04, halfWidth: 3.66, height: 2.44 };
+export const GOAL = { z: -4.04, halfWidth: 3.66, height: 2.44, depth: 1.5 };
 
 // Small forgiveness adjustments; 1 restores the original tuning.
 const HORIZONTAL_AIM_VARIATION = 0.9;
@@ -41,4 +41,30 @@ export function keeperReaction(difficulty: Difficulty, speedMultiplier: number) 
 
 export function isInsideGoal(x: number, y: number, radius: number) {
   return Math.abs(x) + radius < GOAL.halfWidth && y + radius < GOAL.height && y - radius >= -0.001;
+}
+
+/** Constant-time collisions with the three closed net surfaces; the front stays open. */
+export function constrainScoredBall(position: THREE.Vector3, velocity: THREE.Vector3, radius: number) {
+  if (position.z > GOAL.z) return false;
+  let touched = false;
+  const side = GOAL.halfWidth - radius;
+  if (Math.abs(position.x) > side) {
+    position.x = Math.sign(position.x) * side;
+    velocity.x = -Math.sign(position.x) * Math.abs(velocity.x) * 0.18;
+    velocity.z *= 0.75;
+    touched = true;
+  }
+  if (position.y > GOAL.height - radius) {
+    position.y = GOAL.height - radius;
+    velocity.y = -Math.abs(velocity.y) * 0.18;
+    touched = true;
+  }
+  const back = GOAL.z - GOAL.depth + radius;
+  if (position.z < back) {
+    position.z = back;
+    velocity.z = Math.abs(velocity.z) * 0.2;
+    velocity.x *= 0.5;
+    touched = true;
+  }
+  return touched;
 }

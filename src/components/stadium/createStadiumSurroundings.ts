@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { createStadiumRoof } from "./createStadiumRoof";
 import { createStadiumRoads } from "./stadiumRoads";
 import { createStadiumLandscape } from "./createStadiumLandscape";
 
@@ -29,10 +30,7 @@ export function createStadiumSurroundings(homeColor: number, awayColor: number) 
     block(sideX, height / 2, 18, 2.2, height, 66, concrete);
     block(0, height / 2, 48 + tier * 2.2, 68, height, 2.2, concrete);
   }
-  block(-30, 10, 18, 14, 0.5, 70, roof);
-  block(30, 10, 18, 14, 0.5, 70, roof);
-  block(0, 10, -20, 72, 0.5, 12, roof);
-  block(0, 10, 56, 72, 0.5, 12, roof);
+  group.add(createStadiumRoof());
 
   // Static seats are batched into one draw call, separate from the animated crowd.
   const rows = 6;
@@ -56,6 +54,16 @@ export function createStadiumSurroundings(homeColor: number, awayColor: number) 
     }
   }
   group.add(seats);
+
+  // Pitch-side barriers and team-colored boards reuse existing instanced batches.
+  const boardColors = [homeColor, awayColor].map(color => new THREE.MeshBasicMaterial({ color }));
+  for (const side of [-1, 1]) {
+    for (let z = -2; z <= 42; z += 4) {
+      block(side * 19, 0.55, z, 0.15, 1.1, 3.6, boardColors[Math.abs(z / 4) % 2 < 1 ? 0 : 1]);
+    }
+    block(side * 21, 1, 18, 0.1, 0.08, 54, roof);
+    for (let z = -8; z <= 44; z += 4) block(side * 21, 0.5, z, 0.08, 1, 0.08, roof);
+  }
 
   // Only the opposite goal belongs to the exterior; markings are owned by pitch.ts.
   block(-3.66, 1.22, 40, 0.16, 2.44, 0.16, white);

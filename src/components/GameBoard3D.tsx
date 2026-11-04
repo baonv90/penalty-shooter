@@ -175,11 +175,11 @@ export default function GameBoard3D() {
 
   return (
     <div
-      className="w-full h-full min-h-0 flex flex-col items-center justify-center bg-slate-950 text-white select-none relative overflow-hidden"
+      className="w-full h-full min-h-0 [container-type:size] flex flex-col items-center justify-center bg-slate-950 text-white select-none relative overflow-hidden"
       onClick={handleInput}
     >
       {/* Frame Game 3D */}
-      <div className="w-full max-w-[1350px] h-full min-h-0 relative overflow-hidden rounded-2xl shadow-2xl border border-slate-800 bg-slate-900 flex items-center justify-center">
+      <div style={{ width: "min(100cqw, 177.7778cqh)", aspectRatio: "16 / 9", maxWidth: 1920 }} className="shrink-0 relative overflow-hidden rounded-2xl shadow-2xl border border-slate-800 bg-slate-900 flex items-center justify-center">
         {/* Truyền gkTargetX để thủ môn thực sự bay người */}
         <Penalty3D
           introActive={introActive}

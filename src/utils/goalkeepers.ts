@@ -70,19 +70,20 @@ function createAnimalGK(type: "bear" | "skunk"): GKData {
   const limb = (name: string, x: number, y: number, arm: boolean) => {
     const pivot = new THREE.Group();
     pivot.name = name;
-    pivot.position.set(x, y, arm && bear ? 0.15 : 0);
+    pivot.position.set(x, y, arm && bear ? 0.06 : 0);
     group.add(pivot);
-    const length = arm ? (bear ? 0.48 : 0.3) : 0.28;
+    const length = arm ? (bear ? 0.52 : 0.3) : 0.28;
     const radius = bear ? (arm ? 0.15 : 0.115) : 0.075;
     ellipsoid(pivot, fur, [0, -length / 2, 0], [radius, length / 2 + radius * 0.5, radius]);
+    ellipsoid(pivot, fur, [0, 0, 0], [radius * 1.12, radius * 1.12, radius * 1.12]);
     const paw = ellipsoid(pivot, arm ? cream : dark,
       [0, -length, arm && bear ? 0.12 : 0.045],
       [radius * (arm && bear ? 1.5 : 1.18), radius * 0.95, radius * 1.3]);
     paw.name = arm ? "paw" : "foot";
     return pivot;
   };
-  const armL = limb("left-shoulder", -width * 1.12, shoulderY, true);
-  const armR = limb("right-shoulder", width * 1.12, shoulderY, true);
+  const armL = limb("left-shoulder", -width * 0.84, shoulderY, true);
+  const armR = limb("right-shoulder", width * 0.84, shoulderY, true);
   const legL = limb("left-hip", -width * 0.53, 0.38, false);
   const legR = limb("right-hip", width * 0.53, 0.38, false);
   let tail: THREE.Group | undefined;
@@ -177,10 +178,11 @@ function createHumanGK(): GKData {
     shortsMat,
     0x000000,
     createFaceTexture(),
-    false
+    false,
+    "1"
   );
 
-  human.headGroup.scale.setScalar(1.3);
+  human.headGroup.scale.setScalar(0.82);
 
   return {
     group: human.group,

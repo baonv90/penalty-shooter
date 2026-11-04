@@ -3,13 +3,16 @@ import type { Penalty3DProps } from "../components/Penalty3D";
 import { createGoalkeeper, animateGoalkeeper, type GKData } from "../utils/goalkeepers";
 import { BALL_RADIUS, createKeeperCollision, disposeScene } from "../utils/penaltyPhysics";
 import * as THREE from "three";
-import { getHexColor, createJerseyTexture } from "../utils/textures";
+import { jerseyNumberColor } from "../utils/jersey";
+import { getHexColor } from "../utils/textures";
 import { animateKicker, KICK_CONTACT_TIME } from "../utils/playerAnimation";
-import { GOAL, SHOT_GRAVITY, launchShot, keeperReaction, isInsideGoal } from "../utils/shotSimulation";
+import { GOAL, SHOT_GRAVITY, launchShot, keeperReaction, isInsideGoal, constrainScoredBall } from "../utils/shotSimulation";
 import { playCheer, playGroan, playKick } from "../utils/audio";
 import { StadiumData } from "../utils/models";
 
 export interface PhysicsElements {
+  updateNet?: (intensity: number) => void;
+  updateAmbience?: (time: number, entering: boolean, celebrating: boolean) => void;
   updateSurroundings?: (delta: number, active: boolean) => void;
   updateEntrance?: (delta: number) => boolean;
   scene: THREE.Scene;
@@ -72,12 +75,10 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<Penalty3DProp
     };
     const nextPosition = new THREE.Vector3();
     const direction = new THREE.Vector3();
-    const dummy = new THREE.Object3D();
     let keeperType = propsRef.current.gkType;
     let lastCrowdUpdate = -Infinity;
     let resolved = false;
     let goalScored = false;
-    const netRestZ = elements.net.position.z;
     const resolve = (outcome: import("../utils/penaltyPhysics").ShotOutcome) => {
       if (resolved) return;
       resolved = true;
@@ -85,6 +86,7 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<Penalty3DProp
       propsRef.current.onShotResolved?.(outcome);
     };
 
+    const phaseIsGoal = () => propsRef.current.phase === "result" && goalScored;
     const animate = () => {
       animId = requestAnimationFrame(animate);
       const delta = Math.min(clock.getDelta(), 0.1);
@@ -92,6 +94,7 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<Penalty3DProp
       const time = clock.elapsedTime;
       const entering = elements.updateEntrance?.(delta) ?? false;
       elements.updateSurroundings?.(delta, entering);
+      elements.updateAmbience?.(time, entering, phaseIsGoal());
 
       // Replace only the keeper; preserve the renderer, pitch, stadium and textures.
       if (propsRef.current.gkType !== keeperType) {
@@ -119,7 +122,6 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<Penalty3DProp
         gkGroup,
         aimArrowGroup,
         timingRingGroup,
-        net,
         kicker,
         gkData,
         smokeGroup,
@@ -148,9 +150,7 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<Penalty3DProp
       if (state.currentJerseyHex !== targetHex) {
         state.currentJerseyHex = targetHex;
         pShirtMat.color.setHex(targetHex);
-        pNumberMat.map?.dispose();
-        pNumberMat.map = createJerseyTexture(targetHex);
-        pNumberMat.needsUpdate = true;
+        pNumberMat.color.setHex(jerseyNumberColor(targetHex));
       }
 
       // NHỊP 1: Định hướng
@@ -284,11 +284,8 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<Penalty3DProp
           } else {
             ballGroup.position.copy(nextPosition);
           }
-          if (goalScored && ballGroup.position.z < GOAL.z - 1.5 + BALL_RADIUS) {
-            ballGroup.position.z = GOAL.z - 1.5 + BALL_RADIUS;
-            state.reboundVel.z = Math.abs(state.reboundVel.z) * 0.2;
-            state.reboundVel.x *= 0.5;
-            state.netBulgeTime = 0.35;
+          if (goalScored && constrainScoredBall(ballGroup.position, state.reboundVel, BALL_RADIUS)) {
+            state.netBulgeTime = 0.25;
           }
           if (ballGroup.position.y < BALL_RADIUS) {
             ballGroup.position.y = BALL_RADIUS;
@@ -306,59 +303,13 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<Penalty3DProp
         }
       }
 
-      // HIỆU ỨNG LƯỚI
-      if (state.netBulgeTime > 0) {
-        state.netBulgeTime -= delta;
-        const intensity = state.netBulgeTime * 5;
-        net.position.z = netRestZ - intensity * 0.4;
-        net.scale.z = 1 + intensity * 0.15;
-      } else {
-        net.position.z = netRestZ;
-        net.scale.z = 1;
-      }
+      if (state.netBulgeTime > 0) state.netBulgeTime = Math.max(0, state.netBulgeTime - delta);
+      elements.updateNet?.(state.netBulgeTime / 0.25);
 
       // Background crowd updates at 30 Hz; gameplay still renders every frame.
       if (time - lastCrowdUpdate >= 1 / 30) {
         lastCrowdUpdate = time;
-        const { stadiumData } = elements;
-        const {
-          bodiesInstanced,
-          headsInstanced,
-          flagsInstanced,
-          fanPositions,
-          flagCount,
-        } = stadiumData;
-
-        const elapsedTime = time;
-
-        const isGoalScored = phase === "result" && goalScored;
-        const jumpSpeed = isGoalScored ? 12 : 5;
-        const jumpHeight = isGoalScored ? 0.25 : 0.08;
-
-        let flagIdx = 0;
-
-        fanPositions.forEach((pos, i) => {
-          const jumpOffset =
-            Math.sin(elapsedTime * jumpSpeed + pos.phase) * jumpHeight;
-          const currentY = Math.max(pos.y, pos.y + jumpOffset);
-
-          // Body/head orientation is static: update only the translation in each matrix.
-          bodiesInstanced.instanceMatrix.array[i * 16 + 13] = currentY + 0.05;
-          headsInstanced.instanceMatrix.array[i * 16 + 13] = currentY + 0.55;
-
-          if (i % 10 === 0 && flagIdx < flagCount) {
-            const waveAngle = Math.sin(elapsedTime * 8 + pos.phase) * 0.5;
-            dummy.position.set(pos.x + 0.4, currentY + 0.8, pos.z + 0.2);
-            dummy.rotation.set(0, waveAngle, waveAngle * 0.5);
-            dummy.updateMatrix();
-            flagsInstanced.setMatrixAt(flagIdx, dummy.matrix);
-            flagIdx++;
-          }
-        });
-
-        bodiesInstanced.instanceMatrix.needsUpdate = true;
-        headsInstanced.instanceMatrix.needsUpdate = true;
-        flagsInstanced.instanceMatrix.needsUpdate = true;
+        elements.stadiumData.updateCrowd?.(time, phase === "result" && goalScored);
 
       }
 

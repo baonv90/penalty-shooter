@@ -40,18 +40,7 @@ export function createFaceTexture(): THREE.CanvasTexture {
   const ctx = canvas.getContext("2d")!;
   ctx.fillStyle = "#ffdbac";
   ctx.fillRect(0, 0, 128, 128);
-  ctx.fillStyle = "#000000";
-  ctx.beginPath();
-  ctx.arc(40, 50, 6, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(88, 50, 6, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = "#000000";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.arc(64, 75, 15, 0.2 * Math.PI, 0.8 * Math.PI, false);
-  ctx.stroke();
+  // Facial features are modeled in 3D; this texture supplies an even skin base.
   return new THREE.CanvasTexture(canvas);
 }
 

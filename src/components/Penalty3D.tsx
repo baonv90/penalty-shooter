@@ -2,10 +2,7 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import {
   getHexColor,
-  createJerseyTexture,
   createFaceTexture,
-  createNetTexture,
-  createSideNetTexture,
 } from "../utils/textures";
 import {
   createHumanoid,
@@ -14,6 +11,8 @@ import {
   createPitchLines,
 } from "../utils/models";
 import { createGoalkeeper } from "../utils/goalkeepers"; // <-- Import mới
+import { createGoalNet } from "./stadium/createGoalNet";
+import { createStadiumAmbience } from "../utils/stadiumAmbience";
 import { useStadiumEntrance } from "../hooks/useStadiumEntrance";
 import { createStadiumActivity } from "./stadium/createStadiumActivity";
 import { createStadiumSurroundings } from "./stadium/createStadiumSurroundings";
@@ -199,60 +198,8 @@ export default function Penalty3D({
     crossbar.position.set(0, 2.44, 0);
     crossbar.castShadow = true;
 
-    // --- HIGH-CONTRAST FULL NET ASSEMBLY (Back, Top, Left, Right) ---
-    const netGroup = new THREE.Group();
-    const netMat = new THREE.MeshStandardMaterial({
-      map: createNetTexture(),
-      transparent: true,
-      opacity: 1,
-      side: THREE.DoubleSide,
-      roughness: 0.1,
-    });
-
-    const sideNetMat = new THREE.MeshStandardMaterial({
-      map: createSideNetTexture(), // Properly scaled texture for side/top panels
-      transparent: true,
-      opacity: 0.85,
-      side: THREE.DoubleSide,
-      roughness: 0.1,
-    });
-
-    const depth = 1.5;
-    const gwidth = 7.32;
-    const gheight = 2.44;
-
-    // Back Net
-    const backNet = new THREE.Mesh(
-      new THREE.PlaneGeometry(gwidth, gheight),
-      netMat
-    );
-    backNet.position.set(0, gheight / 2 - 0.1, -depth);
-
-    // Top / Roof Net
-    const topNet = new THREE.Mesh(
-      new THREE.PlaneGeometry(gwidth, depth),
-      sideNetMat
-    );
-    topNet.rotation.x = Math.PI / 2;
-    topNet.position.set(0, gheight, -depth / 2);
-
-    // Left Side Net
-    const leftNet = new THREE.Mesh(
-      new THREE.PlaneGeometry(depth, gheight),
-      sideNetMat
-    );
-    leftNet.rotation.y = Math.PI / 2;
-    leftNet.position.set(-gwidth / 2, gheight / 2, -depth / 3);
-
-    // Right Side Net
-    const rightNet = new THREE.Mesh(
-      new THREE.PlaneGeometry(depth, gheight),
-      sideNetMat
-    );
-    rightNet.rotation.y = Math.PI / 2;
-    rightNet.position.set(gwidth / 2, gheight / 2, -depth / 3);
-
-    netGroup.add(backNet, topNet, leftNet, rightNet);
+    const goalNet = createGoalNet();
+    const netGroup = goalNet.group;
     const goalFrame = new THREE.Group();
     goalFrame.add(postL, postR, crossbar);
     goalGroup.add(goalFrame, netGroup);
@@ -316,11 +263,6 @@ export default function Penalty3D({
     const pShirtMat = new THREE.MeshStandardMaterial({
       color: currentJerseyHex,
     });
-    const pNumberMat = new THREE.MeshBasicMaterial({
-      map: createJerseyTexture(currentJerseyHex),
-      transparent: true,
-    });
-
     const kicker = createHumanoid(
       skinMat,
       pShirtMat,
@@ -331,13 +273,7 @@ export default function Penalty3D({
       "95"
     );
 
-    const numberPlane = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.35, 0.35),
-      pNumberMat
-    );
-    numberPlane.position.set(0, 0, 0.23);
-    numberPlane.rotation.y = Math.PI;
-    kicker.body.add(numberPlane);
+    const pNumberMat = kicker.numberMaterial;
     const pGroup = new THREE.Group();
     pGroup.position.set(1.5, 0, 4.5);
     kicker.group.rotation.y = -0.3;
@@ -375,8 +311,13 @@ export default function Penalty3D({
       getHexColor(propsRef.current.players[1]?.jerseyColor ?? "bg-blue-600")
     );
     scene.add(activity.group);
+    const ambience = createStadiumAmbience();
+    const handleVisibility = () => ambience.setSuspended(document.hidden);
+    document.addEventListener("visibilitychange", handleVisibility);
+    handleVisibility();
     const updateEntrance = propsRef.current.introActive ? createEntrance(camera, {
       shouldSkip: () => !propsRef.current.introActive,
+      onProgress: progress => ambience.update(progress),
       onComplete: () => propsRef.current.onIntroComplete?.(),
     }) : undefined;
 
@@ -384,6 +325,9 @@ export default function Penalty3D({
     const cleanupAnimation = startAnimation({
       updateEntrance,
       updateSurroundings: activity.update,
+      updateAmbience: (time, entering, celebrating) => {
+        if (!entering) ambience.updateMatch(time, celebrating);
+      },
       scene,
       camera,
       renderer,
@@ -392,6 +336,7 @@ export default function Penalty3D({
       aimArrowGroup,
       timingRingGroup,
       net: netGroup,
+      updateNet: goalNet.updateBulge,
       kicker,
       gkData,
       gkGroup,
@@ -424,7 +369,8 @@ export default function Penalty3D({
     return () => {
       resizeObserver.disconnect();
       cleanupAnimation();
-      updateEntrance?.dispose();
+      document.removeEventListener("visibilitychange", handleVisibility);
+      ambience.stop();
       disposeScene(scene);
       dirLight.shadow.dispose();
       renderer.dispose();

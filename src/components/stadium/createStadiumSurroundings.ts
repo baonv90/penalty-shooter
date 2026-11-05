@@ -7,6 +7,7 @@ import { getStadiumLayout, getStadiumRows } from "./stadiumLayout";
 import { createSanSiroBowl } from "./createSanSiroBowl";
 import { createStadiumPlaza } from "./createStadiumPlaza";
 import { createStamfordBridgeBowl } from "./createStamfordBridge";
+import { createSanSiroForecourt } from "./createSanSiroForecourt";
 
 /** Static stadium exterior: shared geometry/materials and instanced scenery. */
 export function createStadiumSurroundings(homeColor: number, awayColor: number, stadiumId: StadiumId = "arena") {
@@ -106,6 +107,7 @@ export function createStadiumSurroundings(homeColor: number, awayColor: number, 
   block(0, 0.01, 68, 96, 0.02, 10, paving);
   block(0, 0.01, -33, 96, 0.02, 10, paving);
   group.add(london ? createStadiumPlaza() : createStadiumRoads());
+  if (milan) group.add(createSanSiroForecourt());
 
   // Entrance portals, ticket booths and parking pads along the approach paths.
   const entrance = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 1 });
@@ -126,7 +128,7 @@ export function createStadiumSurroundings(homeColor: number, awayColor: number, 
   }
 
   group.add(createStadiumLandscape(stadiumId));
-  for (const x of london ? [] : [-37, 37]) {
+  for (const x of london || milan ? [] : [-37, 37]) {
     for (const z of [-24, 61]) {
       const lightHeight = Math.max(20, layout.roofHeight + 5);
       block(x, lightHeight / 2, z, 0.45, lightHeight, 0.45, concrete);

@@ -6,7 +6,7 @@ import { getStadiumLayout } from "./stadiumLayout";
 /** A continuous circuit above the venue, including London's pedestrian precinct. */
 export function createStadiumDrive(camera: THREE.PerspectiveCamera, stadiumId: StadiumId = "arena") {
   const layout = getStadiumLayout(stadiumId);
-  const height = stadiumId === "stamford-bridge" ? 78 : Math.max(30, layout.roofHeight + 16);
+  const height = stadiumId === "san-siro" ? 82 : stadiumId === "stamford-bridge" ? 78 : Math.max(30, layout.roofHeight + 16);
   const carRoute = createRoadRoute(-1.7);
   const cameraRoute = createRoadRoute(26);
   const lapDuration = carRoute.getLength() / (stadiumId === "stamford-bridge" ? 5 : 7);

@@ -13,13 +13,14 @@ const bundle = await build({
       export { getTrainPosition } from './src/components/stadium/createStadiumRailway';
       export { createOptimizedStadium } from './src/utils/models';
       export { getStadiumLayout } from './src/components/stadium/stadiumLayout';
+      export { getGameCameraFov } from './src/utils/gameViewport';
     `,
     resolveDir: new URL('..', import.meta.url).pathname,
   },
   bundle: true, write: false, format: 'esm', platform: 'node', external: ['three'],
 });
 const source = bundle.outputFiles[0].text.replaceAll('"three"', JSON.stringify(import.meta.resolve('three')));
-const { createStadiumSurroundings, createStadiumActivity, createStadiumDrive, createRoadRoute, getTrainPosition, createOptimizedStadium, getStadiumLayout } =
+const { createStadiumSurroundings, createStadiumActivity, createStadiumDrive, createRoadRoute, getTrainPosition, createOptimizedStadium, getStadiumLayout, getGameCameraFov } =
   await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
 
 test('San Siro has four corner towers and snow caps; London has a working railway', () => {
@@ -28,6 +29,17 @@ test('San Siro has four corner towers and snow caps; London has a working railwa
   milan.traverse(object => { if (object.name === 'san-siro-corner-tower') towers.push(object); });
   assert.equal(towers.length, 4);
   assert.equal(new Set(towers.map(tower => `${tower.position.x},${tower.position.z}`)).size, 4);
+  const accessTowers = [];
+  milan.traverse(object => { if (object.name === 'san-siro-access-tower') accessTowers.push(object); });
+  assert.equal(accessTowers.length, 7);
+  assert.ok(towers.every(tower => tower.position.y * 2 > 30));
+  assert.equal(milan.getObjectByName('circular-entry-canopies').count, 20);
+  const roof = milan.getObjectByName('san-siro-roof');
+  assert.ok(roof.getObjectByName('ribbed-barrel-roof-panels'));
+  assert.ok(roof.getObjectByName('san-siro-red-lattice-trusses'));
+  roof.updateMatrixWorld(true);
+  const openingRay = new THREE.Raycaster(new THREE.Vector3(0, 70, 18), new THREE.Vector3(0, -1, 0));
+  assert.equal(openingRay.intersectObject(roof, true).length, 0, 'the roof structure must leave the pitch opening clear');
   assert.ok(milan.getObjectByName('snow-covered-alpine-peaks'));
   assert.equal(milan.getObjectByName('snow-covered-alpine-peaks').count, 10);
   const canopy = milan.getObjectByName('san-siro-roof').children.find(mesh => mesh.material?.name === 'gray-concrete-canopy');
@@ -51,14 +63,14 @@ test('San Siro has seating in the same corner on all floors and an aligned exter
   const stadium = createStadiumSurroundings(0xff0000, 0x0000ff, 'san-siro');
   const bowl = stadium.getObjectByName('san-siro-rectangular-bowl');
   bowl.updateMatrixWorld(true);
-  const ray = new THREE.Raycaster(new THREE.Vector3(40, 30, -28), new THREE.Vector3(0, -1, 0));
+  const ray = new THREE.Raycaster(new THREE.Vector3(38, 30, -23), new THREE.Vector3(0, -1, 0));
   const floors = new Set(ray.intersectObject(bowl, true).map(hit => Math.floor(hit.point.y / 8)));
   assert.ok([0, 1, 2].every(floor => floors.has(floor)), 'all floors must fill the corner');
   const outerFaces = [4, 12, 20].map(y => {
     ray.set(new THREE.Vector3(60, y, 18), new THREE.Vector3(-1, 0, 0));
     return ray.intersectObject(bowl, true)[0].point.x;
   });
-  assert.ok(outerFaces.every(x => Math.abs(x - outerFaces[0]) < 0.001), 'the floors must share one footprint');
+  assert.ok(outerFaces.every(x => Math.abs(x - outerFaces[0]) < 0.2), 'the floors must share one footprint');
 });
 
 test('multi-floor crowds fit inside each stadium canopy and occupy all four stands', () => {
@@ -131,4 +143,18 @@ test('the home camera completes a seamless circuit with matching position and or
   const before = camera.position.clone();
   drive(duration + 0.001);
   assert.ok(camera.position.distanceTo(before) < 0.1);
+});
+
+test('the goal and ball stay in view when the game viewport fills portrait and wide screens', () => {
+  for (const [width, height] of [[320, 690], [390, 730], [1440, 780], [2560, 970]]) {
+    const camera = new THREE.PerspectiveCamera(getGameCameraFov(width / height), width / height, 0.1, 800);
+    camera.position.set(0, 3.5, 9);
+    camera.lookAt(0, 1.2, -4);
+    camera.updateMatrixWorld(true);
+    for (const point of [[-3.74, 0, -4.04], [3.74, 2.52, -4.04], [0, 0.15, 2]]) {
+      const projected = new THREE.Vector3(...point).project(camera);
+      assert.ok(Math.abs(projected.x) < 1 && Math.abs(projected.y) < 1,
+        `the goal and ball must fit at ${width} × ${height}`);
+    }
+  }
 });

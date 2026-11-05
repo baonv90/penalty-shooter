@@ -18,10 +18,10 @@ export default function App() {
   };
 
   return (
-    <main className={`relative w-full h-[100dvh] bg-slate-950 flex flex-col items-center font-sans select-none overflow-hidden ${gamePhase === "menu" ? "" : "px-2 sm:px-5 pb-3"}`}>
+    <main className={`relative w-full h-[100dvh] bg-slate-950 flex flex-col items-center font-sans select-none overflow-hidden ${gamePhase === "menu" ? "" : "px-1 pb-1"}`}>
       {/* Bảng tỉ số (nằm hoàn toàn ngoài sân bóng để không che gôn) */}
       {gamePhase !== "menu" && (
-        <div className="w-full max-w-4xl p-3 z-10">
+        <div className="w-full max-w-4xl px-2 py-2 z-10">
           <ScoreBoard />
         </div>
       )}

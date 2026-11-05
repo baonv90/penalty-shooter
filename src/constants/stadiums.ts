@@ -13,7 +13,7 @@ export const STADIUMS = [
     id: "san-siro",
     name: "San Siro",
     city: "Milan, Italy",
-    description: "Three complete rectangular floors, broad spiral towers and red roof trim.",
+    description: "Red lattice girders, eleven spiral towers and circular entrance pavilions.",
     color: "#ff8275",
     seatColor: 0xc7493e,
     awaySeatColor: 0x334760,

@@ -7,11 +7,12 @@ export function useStadiumEntrance() {
     shouldSkip: () => boolean;
     onComplete: () => void;
     onProgress?: (progress: number) => void;
+    roofHeight?: number;
   }) => {
     const route = new THREE.CatmullRomCurve3([
       new THREE.Vector3(96, 82, 110),
-      new THREE.Vector3(58, 46, 74),
-      new THREE.Vector3(16, 24, 35),
+      new THREE.Vector3(58, Math.max(46, (options.roofHeight ?? 26) + 18), 74),
+      new THREE.Vector3(16, Math.max(24, (options.roofHeight ?? 26) + 3), 35),
       new THREE.Vector3(2, 9, 18),
       new THREE.Vector3(0, 3.5, 9),
     ]);

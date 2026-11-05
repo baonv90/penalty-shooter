@@ -6,7 +6,7 @@ import Penalty3D from "./Penalty3D";
 import { useGameStore } from "../store/gameStore";
 
 export default function GameBoard3D() {
-  const { difficulty, players, turn, gamePhase, setShooting, recordShot } =
+  const { difficulty, players, turn, gamePhase, setShooting, recordShot, matchId } =
     useGameStore();
 
   const currentPlayer = players[turn];
@@ -21,7 +21,6 @@ export default function GameBoard3D() {
 
   // Frame-by-frame controls are read directly by the 3D loop, without React renders.
   const controlsRef = useRef({ aimValue: 0.5, scaleValue: 3 });
-
   const [introActive, setIntroActive] = useState(true);
   const finishIntro = useCallback(() => setIntroActive(false), []);
 
@@ -154,16 +153,17 @@ export default function GameBoard3D() {
         controlsRef.current.aimValue = 0.5;
         setPhase("aiming");
         shotResolved.current = false;
-        recordShot(outcome === "save" ? "miss" : outcome);
+        recordShot(outcome === "save" ? "miss" : outcome, matchId);
       }, 1700);
     },
-    [recordShot],
+    [recordShot, matchId],
   );
 
   useEffect(() => () => clearTimeout(resultTimer.current), []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (gamePhase !== "playing" || (e.target instanceof HTMLElement && e.target.closest("button, input, select, textarea, [contenteditable]"))) return;
       if (e.code === "Space") {
         e.preventDefault();
         if (!e.repeat) handleInput();
@@ -197,32 +197,7 @@ export default function GameBoard3D() {
           gkType={currentGK?.gkType || "human"}
           gkTargetX={gkTargetX}
         />
-
-        {introActive && (
-          <div className="absolute inset-0 z-20 pointer-events-none bg-gradient-to-b from-slate-950/35 via-transparent to-slate-950/60">
-            <div className="absolute top-6 left-6 text-white">
-              <p className="text-xs tracking-[0.3em] uppercase text-green-300">
-                Match day
-              </p>
-              <h2 className="text-2xl sm:text-4xl font-black mt-1">
-                PENALTY ARENA
-              </h2>
-              <p className="text-sm text-slate-200 mt-2">
-                {players[0]?.name} vs {players[1]?.name}
-              </p>
-            </div>
-            <button
-              type="button"
-              className="absolute bottom-20 sm:bottom-6 left-6 pointer-events-auto rounded-full border border-white/30 bg-slate-950/60 px-5 py-2.5 text-sm font-bold hover:bg-slate-800"
-              onClick={(event) => {
-                event.stopPropagation();
-                finishIntro();
-              }}
-            >
-              Bỏ qua giới thiệu →
-            </button>
-          </div>
-        )}
+        {introActive && <div className="absolute inset-0 pointer-events-none" aria-label="Entering the stadium" aria-busy="true" />}
 
         {/* Thông báo kết quả sút */}
         {resultMsg && (

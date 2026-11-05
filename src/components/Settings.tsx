@@ -8,6 +8,7 @@ import {
   GKType,
 } from "../store/gameStore";
 import { initAudio } from "../utils/audio";
+import StadiumPicker from "./StadiumPicker";
 
 export default function Settings() {
   const {
@@ -39,10 +40,7 @@ export default function Settings() {
   };
 
   return (
-    <div className="bg-slate-800/95 p-4 sm:p-6 shadow-2xl text-white w-full max-w-2xl mx-auto rounded-2xl border border-slate-700">
-      <h1 className="text-xl sm:text-2xl font-black mb-4 text-center text-green-400 tracking-wider">
-        PENALTY SHOOTOUT
-      </h1>
+    <div className="match-settings text-white w-full mx-auto">
 
       <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3 mb-4">
         <div>
@@ -224,6 +222,11 @@ export default function Settings() {
           </button>
         </div>
       </div>
+
+      <fieldset className="mb-5 min-w-0">
+        <legend className="block text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider">Stadium / Sân vận động</legend>
+        <StadiumPicker />
+      </fieldset>
 
       <button
         onClick={handleStart}

@@ -20,6 +20,10 @@ export const initAudio = () => {
     getNoiseBuffer(1.5);
     getNoiseBuffer(2);
   }
+  // The home scene may create a suspended context before the first gesture.
+  if (audioCtx.state === "suspended" && navigator.userActivation?.isActive) {
+    void audioCtx.resume().catch(() => {});
+  }
 };
 
 export const getAudioContext = (): AudioContext => {

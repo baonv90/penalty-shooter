@@ -1,6 +1,8 @@
 import * as THREE from "three";
 import { createJerseyNumberGeometry, jerseyNumberColor } from "./jersey";
 import { createCrowdDetails } from "../components/stadium/createCrowdDetails";
+import { StadiumId } from "../constants/stadiums";
+import { getStadiumRows } from "../components/stadium/stadiumLayout";
 
 export interface StadiumData {
   updateCrowd?: (time: number, celebrating: boolean) => void;
@@ -14,13 +16,16 @@ export interface StadiumData {
     z: number;
     isHome: boolean;
     phase: number;
+    facing: number;
   }>;
   flagCount: number;
 }
 
 export function createOptimizedStadium(
   homeColor: number,
-  awayColor: number
+  awayColor: number,
+  seatColor?: number,
+  stadiumId: StadiumId = "arena",
 ): StadiumData {
   const stadiumGroup = new THREE.Group();
   stadiumGroup.position.set(0, 0, -10);
@@ -31,32 +36,75 @@ export function createOptimizedStadium(
     z: number;
     isHome: boolean;
     phase: number;
+    facing: number;
   }> = [];
 
-  // Six terraces share one draw call, leaving room for more audience detail.
+  const rows = getStadiumRows(stadiumId);
+  // All north-stand floors share one draw call.
   const terraces = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1),
-    new THREE.MeshStandardMaterial({ color: 0x334155 }), 6);
+    new THREE.MeshStandardMaterial({ color: 0x334155 }), rows.length);
   const terraceTransform = new THREE.Object3D();
-  for (let i = 0; i < 6; i++) {
-    const stepY = i * 1.2;
-    const stepZ = -i * 2.2;
-    terraceTransform.position.set(0, stepY / 2, stepZ);
-    terraceTransform.scale.set(55, stepY + 1.6, 2.2);
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const height = row.height - row.base;
+    terraceTransform.position.set(0, row.base + height / 2, -row.offset);
+    terraceTransform.scale.set(44, height, row.depth);
     terraceTransform.updateMatrix();
     terraces.setMatrixAt(i, terraceTransform.matrix);
-    for (let j = -25; j <= 25; j += 1.1) {
+    const addFan = (x: number, z: number, facing: number) => {
+      // Leave the seat lettering on the upper north bank visible, as in the reference.
+      if (stadiumId === "stamford-bridge") {
+        if (row.level === 1 && z <= -10 && Math.abs(x) < 14 && facing === 0) return;
+        if (Math.abs(x) + Math.abs(z - 28) > 47 + row.offset * 2) return;
+      }
       fanPositions.push({
-        x: j,
-        y: stepY + 0.9,
-        z: stepZ,
+        x, y: row.height + 0.65, z, facing,
         isHome: Math.random() > 0.3,
-        phase: Math.random() * Math.PI * 2, // Random offset so fans don't jump in sync
+        phase: Math.random() * Math.PI * 2,
       });
+    };
+    const endSpan = stadiumId !== "arena" ? 21 + row.offset : 21;
+    for (let j = -endSpan; j <= endSpan; j += 1.05) {
+      addFan(j, -row.offset, 0);
+      if (stadiumId !== "arena") {
+        addFan(j, 58 + row.offset, Math.PI);
+      }
+    }
+    if (stadiumId !== "arena") {
+      const sideSpan = 27 + row.offset;
+      for (let j = -sideSpan; j <= sideSpan; j += 1.05) {
+        addFan(-23 - row.offset, 28 + j, Math.PI / 2);
+        addFan(23 + row.offset, 28 + j, -Math.PI / 2);
+      }
     }
   }
 
-  stadiumGroup.add(terraces);
+  if (stadiumId === "arena") stadiumGroup.add(terraces);
+  else {
+    terraces.geometry.dispose();
+    terraces.material.dispose();
+  }
   const totalFans = fanPositions.length;
+
+  if (seatColor !== undefined) {
+    const seatGeometry = new THREE.BoxGeometry(1, 1, 1);
+    const seatMaterial = new THREE.MeshStandardMaterial({ color: seatColor, roughness: 0.9 });
+    const cushions = new THREE.InstancedMesh(seatGeometry, seatMaterial, totalFans);
+    const backs = new THREE.InstancedMesh(seatGeometry, seatMaterial, totalFans);
+    const transform = new THREE.Object3D();
+    fanPositions.forEach((position, index) => {
+      transform.rotation.y = position.facing;
+      transform.position.set(position.x, position.y - 0.35, position.z);
+      transform.scale.set(0.7, 0.15, 0.65);
+      transform.updateMatrix();
+      cushions.setMatrixAt(index, transform.matrix);
+      transform.position.set(position.x - Math.sin(position.facing) * 0.3, position.y - 0.08, position.z - Math.cos(position.facing) * 0.3);
+      transform.scale.set(0.7, 0.5, 0.12);
+      transform.updateMatrix();
+      backs.setMatrixAt(index, transform.matrix);
+    });
+    stadiumGroup.add(cushions, backs);
+  }
 
   // 2. Supporter Bodies & Heads
   const bodyGeo = new THREE.CylinderGeometry(0.22, 0.18, 0.7, 8);
@@ -111,7 +159,7 @@ export function createOptimizedStadium(
     headsInstanced.setMatrixAt(idx, dummy.matrix);
     headsInstanced.setColorAt(idx, color.setHex(skinColors[idx % skinColors.length]));
     dummy.position.set(pos.x, pos.y, pos.z);
-    dummy.rotation.y = offsets[idx];
+    dummy.rotation.y = pos.facing + offsets[idx];
     dummy.updateMatrix();
     if (idx % 4 === 0) raised.setMatrixAt(raisedIndex++, dummy.matrix);
     else relaxed.setMatrixAt(relaxedIndex++, dummy.matrix);
@@ -150,7 +198,7 @@ export function createOptimizedStadium(
       const wave = Math.sin(time * 6 + pos.phase) * 0.35;
       dummy.position.set(pos.x + 0.4, pos.y + jump + 0.8, pos.z + 0.2);
       dummy.scale.setScalar(1);
-      dummy.rotation.set(0, wave, wave * 0.5);
+      dummy.rotation.set(0, pos.facing + wave, wave * 0.5);
       dummy.updateMatrix();
       flagsInstanced.setMatrixAt(flag++, dummy.matrix);
     }

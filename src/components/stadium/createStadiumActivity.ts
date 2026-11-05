@@ -1,10 +1,14 @@
 import * as THREE from "three";
 import { createRoadRoute } from "./stadiumRoads";
+import { StadiumId } from "../../constants/stadiums";
+import { createStadiumRailway } from "./createStadiumRailway";
 
-/** Exterior movement is batched and updated only during the aerial entrance. */
-export function createStadiumActivity(homeColor: number, awayColor: number) {
+/** Shared traffic and arrivals for the home loop and match entrance. */
+export function createStadiumActivity(homeColor: number, awayColor: number, stadiumId: StadiumId = "arena") {
   const group = new THREE.Group();
   group.name = "stadium-arrivals-and-traffic";
+  const railway = stadiumId === "stamford-bridge" ? createStadiumRailway() : null;
+  if (railway) group.add(railway.group);
   const box = new THREE.BoxGeometry(1, 1, 1);
   const painted = new THREE.MeshStandardMaterial({ roughness: 0.8 });
   const dark = new THREE.MeshStandardMaterial({ color: 0x17212e, roughness: 0.6 });
@@ -14,16 +18,18 @@ export function createStadiumActivity(homeColor: number, awayColor: number) {
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     // Instance transforms move beyond their initial positions; avoid stale culling bounds.
     mesh.frustumCulled = false;
-    group.add(mesh);
+    if (count > 0) group.add(mesh);
     return mesh;
   };
-  const fanCount = 72;
+  const fanCount = stadiumId === "stamford-bridge" ? 240 : stadiumId === "san-siro" ? 120 : 72;
   const bodies = batch(box, painted, fanCount);
+  bodies.name = "arriving-supporters";
   const heads = batch(new THREE.SphereGeometry(0.17, 8, 6), skin, fanCount);
   const legs = batch(box, dark, fanCount * 2);
   const arms = batch(box, painted, fanCount * 2);
-  const carCount = 16;
+  const carCount = railway ? 0 : 16;
   const cars = batch(box, painted, carCount);
+  cars.name = "stadium-road-traffic";
   const cabins = batch(box, dark, carCount);
   const wheels = batch(new THREE.CylinderGeometry(0.24, 0.24, 0.18, 8), dark, carCount * 4);
   const dynamicMeshes = [bodies, heads, legs, arms, cars, cabins, wheels];
@@ -52,26 +58,41 @@ export function createStadiumActivity(homeColor: number, awayColor: number) {
   const routeLengths = routes.map(route => route.getLength());
   const roadPoint = new THREE.Vector2();
   const roadDirection = new THREE.Vector2();
+  const pedestrianRoutes = [-2, 0, 2].map(lane => createRoadRoute(-7 + lane));
+  const pedestrianLengths = pedestrianRoutes.map(route => route.getLength());
   let elapsed = 0;
-  let lastUpdate = -Infinity;
   const update = (delta: number, active: boolean) => {
     group.visible = active;
     if (!active) return;
     elapsed += delta;
-    if (elapsed - lastUpdate < 1 / 30) return;
-    lastUpdate = elapsed;
+    railway?.update(elapsed);
     for (let i = 0; i < fanCount; i++) {
       const side = i % 2 ? 1 : -1;
       const gateZ = i % 4 < 2 ? 0 : 36;
       const progress = wrap(i * 0.137 + elapsed * (0.023 + i % 3 * 0.003), 1);
-      const startZ = gateZ + (i % 3 - 1) * 24;
+      const startZ = gateZ + (i % 3 - 1) * 24 + (i % 7 - 3) * 1.5;
       const approach = Math.min(progress / 0.7, 1);
       const entry = Math.max(0, (progress - 0.7) / 0.3);
-      const x = side * (46.5 - entry * 10.5);
+      const fromStation = railway && side === 1;
+      const lane = (Math.floor(i / 4) % 5 - 2) * 0.45;
+      const gateX = stadiumId === "san-siro" || stadiumId === "stamford-bridge" ? 42 : 36;
+      const x = fromStation ? THREE.MathUtils.lerp(61.5, gateX, progress) + lane : side * (46.5 - entry * (46.5 - gateX)) + lane;
       const z = THREE.MathUtils.lerp(startZ, gateZ, approach);
       const walk = Math.sin(elapsed * 8 + i * 2);
-      parent.position.set(x, Math.abs(walk) * 0.035, z);
-      parent.rotation.set(0, progress < 0.7 ? Math.atan2(0, gateZ - startZ || 1) : -side * Math.PI / 2, 0);
+      const platformHeight = fromStation ? THREE.MathUtils.clamp((x - 58) / 2, 0, 1) : 0;
+      if (railway && i % 4 !== 1) {
+        // Fans circulate on all four sides, entirely within the paved lanes.
+        const routeIndex = i % pedestrianRoutes.length;
+        const direction = i % 2 ? 1 : -1;
+        const distance = wrap(i * 0.137 + elapsed * direction * 1.3 / pedestrianLengths[routeIndex], 1);
+        pedestrianRoutes[routeIndex].getPointAt(distance, roadPoint);
+        pedestrianRoutes[routeIndex].getTangentAt(distance, roadDirection);
+        parent.position.set(roadPoint.x, 0.08 + Math.abs(walk) * 0.035, roadPoint.y);
+        parent.rotation.set(0, Math.atan2(roadDirection.x * direction, roadDirection.y * direction), 0);
+      } else {
+        parent.position.set(x, platformHeight + 0.08 + Math.abs(walk) * 0.035, z);
+        parent.rotation.set(0, fromStation ? -Math.PI / 2 : progress < 0.7 ? Math.atan2(0, gateZ - startZ || 1) : -side * Math.PI / 2, 0);
+      }
       parent.updateMatrix();
       write(bodies, i, 0, 0.88, 0, 0.38, 0.6, 0.24);
       write(heads, i, 0, 1.38, 0, 1, 1, 1);
@@ -93,7 +114,7 @@ export function createStadiumActivity(homeColor: number, awayColor: number) {
         parent.rotation.set(0, Math.atan2(roadDirection.x * direction, roadDirection.y * direction), 0);
       } else {
         // A few parked cars make the lots feel occupied without extra animation work.
-        parent.position.set(i % 2 ? -64 : 64, 0, 18 + (i - 12) * 6);
+        parent.position.set(railway ? -64 : i % 2 ? -64 : 64, 0, 18 + (i - 12) * 6);
         parent.rotation.set(0, Math.PI / 2, 0);
       }
       parent.updateMatrix();

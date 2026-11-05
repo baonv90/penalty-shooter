@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { StadiumId } from "../constants/stadiums";
 
 export type ShotResult = "goal" | "miss" | "post";
 export type Player = {
@@ -30,10 +31,11 @@ interface GameState {
   gamePhase: "menu" | "playing" | "gameover";
   winner: number | null;
   isNetBulging: boolean;
+  matchId: number;
 
   setShooting: (status: boolean) => void;
   setNetBulge: (status: boolean) => void;
-  recordShot: (result: ShotResult) => void;
+  recordShot: (result: ShotResult, matchId?: number) => void;
   updateSettings: (
     diff: Difficulty,
     ball: BallType,
@@ -46,6 +48,8 @@ interface GameState {
   resetGame: () => void;
   graphicsMode: "2d" | "3d";
   setGraphicsMode: (mode: "2d" | "3d") => void;
+  stadiumId: StadiumId;
+  setStadium: (stadiumId: StadiumId) => void;
 }
 
 const checkWinner = (
@@ -94,14 +98,17 @@ export const useGameStore = create<GameState>((set) => ({
   gamePhase: "menu",
   winner: null,
   isNetBulging: false,
+  matchId: 0,
 
   setShooting: (status) => set({ isShooting: status }),
   setNetBulge: (status) => set({ isNetBulging: status }),
 
-  recordShot: (result) =>
+  recordShot: (result, matchId) =>
     set((state) => {
-      const newPlayers = [...state.players];
-      newPlayers[state.turn].shots.push(result);
+      // A delayed result from a finished/unmounted match cannot leave the home screen.
+      if (state.gamePhase !== "playing" || (matchId !== undefined && matchId !== state.matchId)) return state;
+      const newPlayers = state.players.map((player, index) => index === state.turn
+        ? { ...player, shots: [...player.shots, result] } : player);
       const win = checkWinner(newPlayers[0].shots, newPlayers[1].shots);
       return {
         players: newPlayers,
@@ -124,6 +131,8 @@ export const useGameStore = create<GameState>((set) => ({
     set((state) => ({
       gamePhase: "playing",
       isShooting: false,
+      isNetBulging: false,
+      matchId: state.matchId + 1,
       turn: 0,
       winner: null,
       players: state.players.map((p) => ({ ...p, shots: [] })),
@@ -163,10 +172,15 @@ export const useGameStore = create<GameState>((set) => ({
   resetGame: () =>
     set((state) => ({
       gamePhase: "menu",
+      isShooting: false,
+      isNetBulging: false,
+      matchId: state.matchId + 1,
       turn: 0,
       winner: null,
       players: state.players.map((p) => ({ ...p, shots: [] })),
     })),
   graphicsMode: "3d",
   setGraphicsMode: (mode) => set({ graphicsMode: mode }),
+  stadiumId: "arena",
+  setStadium: (stadiumId) => set({ stadiumId }),
 }));

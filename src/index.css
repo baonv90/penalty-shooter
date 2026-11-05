@@ -14,3 +14,119 @@ body {
   overflow-x: hidden;
   background-color: #0f172a; 
 }
+
+button { -webkit-tap-highlight-color: transparent; }
+button:focus-visible { outline: 2px solid #9df4ce; outline-offset: 5px; }
+
+.home-screen { position: absolute; inset: 0; overflow: hidden; background: #182e3b; color: #f6f6ed; isolation: isolate; }
+.stadium-backdrop, .stadium-backdrop-fallback { position: absolute; inset: 0; }
+.stadium-backdrop canvas { width: 100%; height: 100%; display: block; }
+.stadium-backdrop-fallback { background: radial-gradient(ellipse at 50% 10%, #497c86, #12222e 80%); }
+.home-vignette { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgba(7,18,26,.7), rgba(7,18,26,.08) 25%, rgba(7,18,26,.28) 60%, rgba(7,18,26,.86)), radial-gradient(ellipse at center, rgba(7,18,26,.35), transparent 75%); }
+.home-content { position: relative; height: 100%; display: flex; flex-direction: column; padding: clamp(22px, 4vw, 52px); }
+.home-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.home-brand { display: flex; gap: 12px; align-items: center; font-size: 16px; font-weight: 900; letter-spacing: .15em; }
+.home-brand-mark { display: grid; place-items: center; width: 42px; height: 46px; border: 1px solid rgba(229,242,230,.5); border-radius: 12px 12px 18px 18px; color: #a9edc8; background: #12272d66; }
+.home-brand-sub { display: block; margin-top: 4px; color: #c0cdcd; font-size: 8px; font-weight: 600; letter-spacing: .2em; }
+.match-day-badge { display: flex; align-items: center; gap: 10px; font-size: 10px; font-weight: 800; letter-spacing: .18em; }
+.match-day-badge > span:first-child { width: 6px; height: 6px; border-radius: 50%; background: #9cf5c9; box-shadow: 0 0 12px #9cf5c988; }
+.match-day-number { color: #bac8c8; margin-left: 10px; }
+.home-hero { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 0; text-align: center; padding: 20px 0; }
+.home-eyebrow { display: flex; align-items: center; gap: 14px; font-size: 9px; font-weight: 700; letter-spacing: .28em; color: #dfeddf; margin-bottom: 20px; }
+.home-eyebrow > span { height: 1px; width: 28px; background: #d0e7d577; }
+.home-hero h1 { margin: 0; font-size: clamp(48px, 7.6vw, 112px); font-weight: 950; line-height: .9; letter-spacing: -.065em; text-shadow: 0 4px 50px #07121a66; }
+.home-hero h1 > span { display: block; margin-top: 6px; color: #b6f3cd; }
+.home-title-dot { color: #f5b47c; }
+.home-tagline { font-size: clamp(12px, 1.1vw, 15px); color: #e0e7e7; margin: 24px 0 28px; text-shadow: 0 2px 8px #0008; }
+.home-actions { display: flex; flex-direction: column; gap: 10px; width: 244px; }
+.home-actions button { min-height: 54px; border-radius: 12px; display: flex; align-items: center; justify-content: center; gap: 13px; font-size: 15px; font-weight: 800; transition: transform .18s, background .18s, box-shadow .18s; }
+.home-actions button:active { transform: scale(.97); }
+.home-play { background: #b6f3cd; color: #132b2a; box-shadow: 0 6px 28px #0a181c33; border: 1px solid #d0f9df; padding: 0 20px; }
+.home-play span { flex: 1; text-align: left; }
+.home-play:hover { background: #d4ffe4; box-shadow: 0 6px 30px #9bf7c533; }
+.home-settings { background: rgba(15,29,37,.64); border: 1px solid rgba(229,242,230,.33); backdrop-filter: blur(12px); color: #eff6f0; }
+.home-settings:hover { background: rgba(37,61,68,.9); }
+.home-play-caption { margin-top: 16px; font-size: 8px; letter-spacing: .17em; color: #d3dfdb; display: flex; gap: 10px; }
+.home-play-caption span { color: #a7e1bf; }
+.home-footer { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.home-tools { display: flex; align-items: center; gap: 12px; }
+.home-icon-button { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #dceae933; border-radius: 12px; background: #0d202955; color: #e6eee9; backdrop-filter: blur(12px); transition: background .15s, border-color .15s; }
+.home-icon-button:hover { background: #28444fbb; border-color: #dceae966; }
+.home-tool-divider { height: 20px; width: 1px; background: #dceae933; margin: 0 2px; }
+.home-stadium-button { padding: 0 14px; gap: 10px; }
+.home-stadium-button span { font-size: 11px; font-weight: 700; }
+.home-location { display: flex; align-items: center; gap: 11px; }
+.home-location > svg { color: var(--venue-color); }
+.home-location-caption { display: block; font-size: 8px; letter-spacing: .2em; color: #becdcc; margin-bottom: 6px; }
+.home-location-name { display: block; font-size: 13px; font-weight: 800; }
+.home-location-name > span { font-size: 10px; font-weight: 400; color: #c3d0d0; margin-left: 12px; }
+.home-modal-backdrop { position: absolute; inset: 0; z-index: 10; background: #07131cd1; backdrop-filter: blur(16px); overflow-y: auto; overscroll-behavior: contain; padding: clamp(16px, 5vw, 64px) 16px; display: flex; align-items: safe center; }
+.home-panel { background: #101f2a; border: 1px solid #48606e66; border-radius: 24px; padding: clamp(20px, 3vw, 36px); width: 100%; max-width: 980px; margin: auto; box-shadow: 0 24px 100px #0005; animation: home-panel-enter .22s ease-out; }
+.home-panel-settings { max-width: 840px; }
+.home-panel-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 24px; }
+.home-panel-eyebrow { font-size: 8px; font-weight: 700; letter-spacing: .22em; color: #9fd6bd; margin: 0 0 8px; }
+.home-panel h2 { font-size: clamp(22px, 3vw, 32px); line-height: 1.1; font-weight: 850; letter-spacing: -.035em; }
+.home-panel-intro { font-size: 13px; line-height: 1.7; color: #acbdc8; margin: -8px 0 24px; }
+.home-panel-footer { display: flex; justify-content: space-between; gap: 16px; align-items: center; margin-top: 28px; }
+.home-back-link { display: flex; gap: 8px; align-items: center; padding: 12px 0; font-size: 12px; color: #bacad4; }
+.home-confirm { display: flex; gap: 8px; align-items: center; justify-content: center; min-height: 44px; padding: 10px 18px; border-radius: 10px; background: #b6f3cd; color: #132b2a; font-size: 12px; font-weight: 800; }
+.stadium-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.stadium-card { min-width: 0; padding: 0; text-align: left; overflow: hidden; border: 1px solid #38505d; border-radius: 16px; background: #172a36; transition: border-color .18s, background .18s, transform .18s; }
+.stadium-card:hover { transform: translateY(-3px); background: #1c3341; border-color: #819999; }
+.stadium-card.is-selected { border-color: var(--venue-color); box-shadow: 0 0 0 1px var(--venue-color); }
+.stadium-preview { position: relative; aspect-ratio: 1.5; background: radial-gradient(ellipse at center, #3b5861 0%, #243c4a 55%, #1b303e 100%); overflow: hidden; display: grid; place-items: center; }
+.stadium-preview img { width: 100%; height: 100%; object-fit: contain; transition: transform .25s ease; }
+.stadium-card:hover img { transform: scale(1.06); }
+.stadium-card-index { position: absolute; top: 13px; left: 14px; font-size: 9px; color: #afc4cd; z-index: 1; letter-spacing: .1em; }
+.stadium-selected { display: flex; gap: 4px; align-items: center; position: absolute; top: 9px; right: 8px; font-size: 9px; color: var(--venue-color); background: #0e1f2abf; border: 1px solid #ffffff26; border-radius: 6px; padding: 4px 6px; z-index: 1; }
+.stadium-card-copy { padding: 17px 16px 18px; }
+.stadium-card-copy h3 { font-size: 16px; font-weight: 800; color: #edf3f1; letter-spacing: -.02em; }
+.stadium-city { display: flex; gap: 5px; align-items: center; font-size: 10px; color: var(--venue-color); margin-top: 6px; }
+.stadium-description { font-size: 11px; line-height: 1.7; color: #a7bdc9; margin: 13px 0 0; }
+.stadium-preview-placeholder { font-size: 64px; color: var(--venue-color); opacity: .7; }
+.match-settings .stadium-grid { gap: 10px; }
+.match-settings .stadium-card-copy { padding: 12px; }
+.match-settings .stadium-card-copy h3 { font-size: 14px; }
+.match-settings .stadium-description { font-size: 10px; }
+@keyframes home-panel-enter { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 640px) {
+  .home-content { padding: 22px 20px; padding-top: max(22px, env(safe-area-inset-top)); padding-bottom: max(22px, env(safe-area-inset-bottom)); }
+  .home-brand { font-size: 13px; gap: 9px; }
+  .home-brand-sub { font-size: 6px; }
+  .home-brand-mark { width: 34px; height: 38px; border-radius: 9px 9px 14px 14px; }
+  .match-day-badge { font-size: 8px; gap: 6px; letter-spacing: .1em; }
+  .match-day-number { display: none; }
+  .home-hero h1 { font-size: clamp(45px, 11.5vw, 73px); }
+  .home-eyebrow { font-size: 7px; gap: 8px; letter-spacing: .2em; }
+  .home-eyebrow > span { width: 16px; }
+  .home-footer { align-items: flex-end; gap: 10px; }
+  .home-tools { gap: 8px; }
+  .home-tool-divider, .home-stadium-button span, .home-stadium-button > svg:last-child { display: none; }
+  .home-stadium-button { padding: 0; }
+  .home-location-caption { font-size: 7px; letter-spacing: .12em; }
+  .home-location-name { font-size: 12px; }
+  .home-location-name > span { display: block; margin: 4px 0 0; font-size: 9px; }
+  .home-location { gap: 7px; }
+  .stadium-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .stadium-card-copy { padding: 12px; }
+  .stadium-card-copy h3 { font-size: 14px; }
+  .stadium-description { font-size: 10px; margin-top: 9px; }
+  .stadium-selected { font-size: 8px; right: 6px; top: 7px; }
+  .stadium-card-index { left: 9px; top: 11px; font-size: 8px; }
+  .home-modal-backdrop { padding: 12px; }
+  .home-panel { border-radius: 18px; padding: 20px 16px; }
+}
+@media (max-height: 620px) {
+  .home-content { padding-top: 16px; padding-bottom: 16px; }
+  .home-hero { padding: 10px 0; }
+  .home-hero h1 { font-size: clamp(42px, 12vh, 70px); }
+  .home-eyebrow { margin-bottom: 12px; }
+  .home-tagline { margin: 14px 0 16px; }
+  .home-actions { flex-direction: row; width: 330px; }
+  .home-actions button { flex: 1; min-height: 46px; }
+  .home-play-caption { margin-top: 12px; }
+}
+@media (max-width: 360px) { .home-actions { max-width: 100%; } .home-hero h1 { font-size: 43px; } }
+@media (prefers-reduced-motion: reduce) {
+  .home-screen *, .home-screen *::before, .home-screen *::after { animation: none !important; transition: none !important; }
+}

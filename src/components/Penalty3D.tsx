@@ -18,7 +18,8 @@ import { createStadiumActivity } from "./stadium/createStadiumActivity";
 import { createStadiumSurroundings } from "./stadium/createStadiumSurroundings";
 import { usePenaltyPhysics } from "../hooks/usePenaltyPhysics";
 import { BALL_RADIUS, disposeScene, ShotOutcome } from "../utils/penaltyPhysics";
-import { Difficulty, GKType, Player } from "../store/gameStore";
+import { Difficulty, GKType, Player, useGameStore } from "../store/gameStore";
+import { getStadium } from "../constants/stadiums";
 
 export interface Penalty3DProps {
   shotSpeed?: number;
@@ -54,6 +55,7 @@ export default function Penalty3D({
   gkType,
 }: Penalty3DProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const stadiumId = useGameStore(state => state.stadiumId);
 
   // Sync Props xuống Hook
   const propsRef = useRef<Penalty3DProps>({
@@ -114,8 +116,9 @@ export default function Penalty3D({
     container.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color("#87CEEB");
-    scene.fog = new THREE.Fog("#87CEEB", 220, 600);
+    const stadium = getStadium(stadiumId);
+    scene.background = new THREE.Color(stadium.sky);
+    scene.fog = new THREE.Fog(stadium.sky, 220, 600);
 
     // Tối ưu hóa bóng đổ để tránh mỏi GPU TV
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -299,16 +302,20 @@ export default function Penalty3D({
 
     const stadiumData = createOptimizedStadium(
       getHexColor(propsRef.current.players[0]?.jerseyColor ?? "bg-red-600"),
-      getHexColor(propsRef.current.players[1]?.jerseyColor ?? "bg-blue-600")
+      getHexColor(propsRef.current.players[1]?.jerseyColor ?? "bg-blue-600"),
+      stadium.seatColor,
+      stadiumId
     );
     scene.add(stadiumData.stadiumGroup);
     scene.add(createStadiumSurroundings(
       getHexColor(propsRef.current.players[0]?.jerseyColor),
-      getHexColor(propsRef.current.players[1]?.jerseyColor ?? "bg-blue-600")
+      getHexColor(propsRef.current.players[1]?.jerseyColor ?? "bg-blue-600"),
+      stadiumId
     ));
     const activity = createStadiumActivity(
       getHexColor(propsRef.current.players[0]?.jerseyColor),
-      getHexColor(propsRef.current.players[1]?.jerseyColor ?? "bg-blue-600")
+      getHexColor(propsRef.current.players[1]?.jerseyColor ?? "bg-blue-600"),
+      stadiumId
     );
     scene.add(activity.group);
     const ambience = createStadiumAmbience();
@@ -378,7 +385,7 @@ export default function Penalty3D({
         container.removeChild(renderer.domElement);
       }
     };
-  }, [startAnimation, createEntrance]);
+  }, [startAnimation, createEntrance, stadiumId]);
 
   return (
     <div

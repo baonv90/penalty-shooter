@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, useMotionValue, animate, useTransform } from "framer-motion";
 import { useGameStore } from "../store/gameStore";
 import { playKick, playCheer, playGroan } from "../utils/audio";
@@ -15,6 +15,7 @@ export default function PenaltySpot() {
     setNetBulge,
     ballType,
     shootMethod,
+    matchId,
   } = useGameStore();
   const currentPlayer = players[turn];
 
@@ -36,6 +37,8 @@ export default function PenaltySpot() {
   // State quản lý chuyển động của thủ môn
   const [gkAnim, setGkAnim] = useState({ x: 0 });
   const [resultMsg, setResultMsg] = useState("");
+  const resultTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  useEffect(() => () => resultTimers.current.forEach(clearTimeout), []);
 
   const VOICE_THRESHOLD = 30; // Tùy chỉnh độ nhạy âm thanh tại đây (thường từ 30 - 80)
 
@@ -88,6 +91,7 @@ export default function PenaltySpot() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLElement && e.target.closest("button, input, select, textarea, [contenteditable]")) return;
       if (e.code === "Space" && !isShooting && gamePhase === "playing") {
         e.preventDefault();
         handleShoot();
@@ -176,7 +180,7 @@ export default function PenaltySpot() {
     setBallAnim({ x: endX, y: endY, scale: 0.55 });
 
     // 6. Hiệu ứng va chạm và kết quả sau khi bóng bay đến đích (450ms)
-    setTimeout(() => {
+    resultTimers.current.push(setTimeout(() => {
       if (finalResult === "save") {
         setResultMsg("🧤 CẢN PHÁ!");
         playGroan(); // Tiếng khán đài tiếc nuối
@@ -205,16 +209,16 @@ export default function PenaltySpot() {
       }
 
       // 7. Reset vòng lặp trận đấu
-      setTimeout(() => {
+      resultTimers.current.push(setTimeout(() => {
         setResultMsg("");
         setNetBulge(false);
         setBallAnim({ x: 0, y: 0, scale: 1 });
         setGkAnim({ x: 0 }); // Reset thủ môn về giữa
 
         // Save tính là một cú sút hỏng (miss) trên bảng tỉ số
-        recordShot(finalResult === "save" ? "miss" : finalResult);
-      }, 2300);
-    }, 450);
+        recordShot(finalResult === "save" ? "miss" : finalResult, matchId);
+      }, 2300));
+    }, 450));
   };
 
   const getBallStyle = () => {

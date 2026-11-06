@@ -1,5 +1,7 @@
 import { useCallback } from "react";
 import * as THREE from "three";
+import { StadiumId } from "../constants/stadiums";
+import { getGameCameraPosition } from "../utils/gameViewport";
 
 /** Runs inside the existing render loop; no extra RAF or per-frame React updates. */
 export function useStadiumEntrance() {
@@ -8,13 +10,14 @@ export function useStadiumEntrance() {
     onComplete: () => void;
     onProgress?: (progress: number) => void;
     roofHeight?: number;
+    stadiumId?: StadiumId;
   }) => {
     const route = new THREE.CatmullRomCurve3([
       new THREE.Vector3(96, 82, 110),
       new THREE.Vector3(58, Math.max(46, (options.roofHeight ?? 26) + 18), 74),
       new THREE.Vector3(16, Math.max(24, (options.roofHeight ?? 26) + 3), 35),
       new THREE.Vector3(2, 9, 18),
-      new THREE.Vector3(0, 3.5, 9),
+      new THREE.Vector3(...getGameCameraPosition(options.stadiumId)),
     ]);
     const focus = new THREE.Vector3();
     const startFocus = new THREE.Vector3(0, 0, 18);

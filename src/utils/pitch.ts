@@ -1,12 +1,26 @@
 import * as THREE from "three";
+import { StadiumId } from "../constants/stadiums";
+import { HOME_GROUND_PITCH } from "../components/stadium/homeGroundLayout";
+import { createGardenGrassMaterial } from "./gardenGrass";
 
 // One field layout shared by the mowing stripes and all painted markings.
 export const FIELD = { width: 32, nearZ: -4.04, farZ: 40 };
 const length = FIELD.farZ - FIELD.nearZ;
 const centerZ = (FIELD.nearZ + FIELD.farZ) / 2;
 
-export function createFieldGrass() {
+export function createFieldGrass(stadiumId: StadiumId = "arena") {
   const group = new THREE.Group();
+  if (stadiumId === "home-ground") {
+    group.name = "home-ground-single-color-grass";
+    const field = HOME_GROUND_PITCH;
+    // One solid surface: no near-coplanar apron, mowing overlays or paving beneath its edges.
+    const grass = new THREE.Mesh(new THREE.BoxGeometry(field.apronWidth, 0.12, field.apronDepth),
+      createGardenGrassMaterial(field.apronWidth, field.apronDepth));
+    grass.position.set(0, -0.06, (field.nearZ + field.farZ) / 2);
+    grass.receiveShadow = true;
+    group.add(grass);
+    return group;
+  }
   const material = new THREE.MeshStandardMaterial({ color: 0x2e7d32, roughness: 0.9 });
   const apron = new THREE.Mesh(new THREE.CircleGeometry(88, 64), material);
   apron.rotation.x = -Math.PI / 2;
@@ -34,12 +48,34 @@ export function createFieldGrass() {
   return group;
 }
 
-export function createFieldMarkings() {
+export function createFieldMarkings(stadiumId: StadiumId = "arena") {
   const group = new THREE.Group();
   group.name = "pitch-markings";
   const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
   const segments: [number, number, number, number][] = [];
   const line = (x: number, z: number, width: number, depth: number) => segments.push([x, z, width, depth]);
+  if (stadiumId === "home-ground") {
+    const field = HOME_GROUND_PITCH;
+    // Keep the white boundary and goal-box lines on the compact garden pitch.
+    const center = (field.nearZ + field.farZ) / 2;
+    line(0, field.nearZ, field.width, 0.09);
+    line(0, field.farZ, field.width, 0.09);
+    for (const side of [-1, 1]) {
+      line(side * field.width / 2, center, 0.09, field.farZ - field.nearZ);
+      line(side * 5.7, field.nearZ + 1.97, 0.09, 3.94);
+    }
+    line(0, field.nearZ + 3.94, 11.4, 0.09);
+    const lines = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), material, segments.length);
+    const dummy = new THREE.Object3D();
+    segments.forEach(([x, z, width, depth], index) => {
+      dummy.position.set(x, 0.025, z); dummy.scale.set(width, 0.02, depth); dummy.updateMatrix();
+      lines.setMatrixAt(index, dummy.matrix);
+    });
+    group.add(lines);
+    const spot = new THREE.Mesh(new THREE.CircleGeometry(0.12, 16), material);
+    spot.rotation.x = -Math.PI / 2; spot.position.set(0, 0.04, 2); group.add(spot);
+    return group;
+  }
   line(0, FIELD.nearZ, FIELD.width, 0.12);
   line(0, FIELD.farZ, FIELD.width, 0.12);
   line(-FIELD.width / 2, centerZ, 0.12, length);

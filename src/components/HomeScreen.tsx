@@ -64,7 +64,7 @@ export default function HomeScreen({ muted, onToggleMute }: { muted: boolean; on
         <section className="home-hero" aria-labelledby="home-title">
           <p className="home-eyebrow"><span /> TWO PLAYERS. ONE MOMENT. <span /></p>
           <h1 id="home-title">PENALTY<span>SHOOTOUT<span className="home-title-dot">.</span></span></h1>
-          <p className="home-tagline">The crowd is waiting. Make your moment.</p>
+          <p className="home-tagline">{stadiumId === "home-ground" ? "Your home pitch. Make your moment." : "The crowd is waiting. Make your moment."}</p>
           <div className="home-actions">
             <button type="button" className="home-play" onClick={quickPlay}><Play size={19} fill="currentColor" /><span>Play</span><ChevronRight size={20} /></button>
             <button type="button" className="home-settings" onClick={() => setPanel("settings")}><Settings2 size={18} /><span>Settings</span></button>
@@ -88,7 +88,7 @@ export default function HomeScreen({ muted, onToggleMute }: { muted: boolean; on
               <button className="home-icon-button" type="button" onClick={() => setPanel("home")} aria-label="Back to home"><X size={21} /></button>
             </div>
             {panel === "settings" ? <Settings /> : <>
-              <p className="home-panel-intro">Three grounds. Three different atmospheres. Pick where you play.</p>
+              <p className="home-panel-intro">Different grounds. Different atmospheres. Pick where you play.</p>
               <StadiumPicker />
               <div className="home-panel-footer"><button type="button" className="home-back-link" onClick={() => setPanel("home")}><ArrowLeft size={16} /> Back</button><button type="button" className="home-confirm" onClick={() => setPanel("home")}><Check size={17} /> {stadium.name}</button></div>
             </>}

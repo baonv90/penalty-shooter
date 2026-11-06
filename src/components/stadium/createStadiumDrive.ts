@@ -5,6 +5,11 @@ import { getStadiumLayout } from "./stadiumLayout";
 
 /** A continuous circuit above the venue, including London's pedestrian precinct. */
 export function createStadiumDrive(camera: THREE.PerspectiveCamera, stadiumId: StadiumId = "arena") {
+  if (stadiumId === "home-ground") return (elapsed: number) => {
+    const angle = elapsed * 0.035 + 0.65;
+    camera.position.set(Math.sin(angle) * 99, 64, 8 + Math.cos(angle) * 105);
+    camera.lookAt(0, 2.5, 8);
+  };
   const layout = getStadiumLayout(stadiumId);
   const height = stadiumId === "san-siro" ? 82 : stadiumId === "stamford-bridge" ? 78 : Math.max(30, layout.roofHeight + 16);
   const carRoute = createRoadRoute(-1.7);

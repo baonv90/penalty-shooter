@@ -14,7 +14,7 @@ import { createGoalkeeper } from "../utils/goalkeepers"; // <-- Import mới
 import { createGoalNet } from "./stadium/createGoalNet";
 import { createStadiumAmbience } from "../utils/stadiumAmbience";
 import { useStadiumEntrance } from "../hooks/useStadiumEntrance";
-import { getGameCameraFov } from "../utils/gameViewport";
+import { getGameCameraFov, getGameCameraPosition } from "../utils/gameViewport";
 import { createStadiumActivity } from "./stadium/createStadiumActivity";
 import { createStadiumSurroundings } from "./stadium/createStadiumSurroundings";
 import { usePenaltyPhysics } from "../hooks/usePenaltyPhysics";
@@ -106,8 +106,8 @@ export default function Penalty3D({
     const height = Math.max(container.clientHeight, 1);
 
     // 1. Perspective Camera aspect ratio calculation
-    const camera = new THREE.PerspectiveCamera(getGameCameraFov(width / height), width / height, 0.1, 800);
-    camera.position.set(0, 3.5, 9);
+    const camera = new THREE.PerspectiveCamera(getGameCameraFov(width / height, stadiumId), width / height, 0.1, 800);
+    camera.position.set(...getGameCameraPosition(stadiumId));
     camera.lookAt(0, 1.2, -4);
 
     // 2. Renderer sizing
@@ -132,8 +132,8 @@ export default function Penalty3D({
     scene.add(dirLight);
 
     // 1. SÂN CỎ & KHÁN ĐÀI (Đã Tối Ưu Tối Đa Bằng InstancedMesh)
-    scene.add(createOptimizedPitch());
-    scene.add(createPitchLines());
+    scene.add(createOptimizedPitch(stadiumId));
+    scene.add(createPitchLines(stadiumId));
 
     // 3. UI 3D (Mũi Tên & Vòng Canh Nhịp)
     const aimArrowGroup = new THREE.Group();
@@ -319,12 +319,13 @@ export default function Penalty3D({
       stadiumId
     );
     scene.add(activity.group);
-    const ambience = createStadiumAmbience();
+    const ambience = createStadiumAmbience(stadiumId !== "home-ground");
     const handleVisibility = () => ambience.setSuspended(document.hidden);
     document.addEventListener("visibilitychange", handleVisibility);
     handleVisibility();
     const updateEntrance = propsRef.current.introActive ? createEntrance(camera, {
-      roofHeight: stadiumId === "san-siro" ? 34 : 26,
+      stadiumId,
+      roofHeight: stadiumId === "home-ground" ? 0 : stadiumId === "san-siro" ? 34 : 26,
       shouldSkip: () => !propsRef.current.introActive,
       onProgress: progress => ambience.update(progress),
       onComplete: () => propsRef.current.onIntroComplete?.(),
@@ -333,7 +334,7 @@ export default function Penalty3D({
     // START HOOK VẬT LÝ
     const cleanupAnimation = startAnimation({
       updateEntrance,
-      updateSurroundings: activity.update,
+      updateSurroundings: (delta, entering) => activity.update(delta, stadiumId === "home-ground" || entering),
       updateAmbience: (time, entering, celebrating) => {
         if (!entering) ambience.updateMatch(time, celebrating);
       },
@@ -365,7 +366,7 @@ export default function Penalty3D({
 
       // Update Camera aspect ratio & projection matrix
       camera.aspect = newWidth / newHeight;
-      camera.fov = getGameCameraFov(camera.aspect);
+      camera.fov = getGameCameraFov(camera.aspect, stadiumId);
       camera.updateProjectionMatrix();
 
       // Update Renderer resolution

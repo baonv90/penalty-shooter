@@ -4,6 +4,7 @@ import { createLandmarkRoof } from "./createLandmarkRoof";
 
 /** Segmented canopies, radial steel trusses and rear columns in three draw calls. */
 export function createStadiumRoof(stadiumId: StadiumId = "arena") {
+  if (stadiumId === "home-ground") return new THREE.Group();
   if (stadiumId !== "arena") return createLandmarkRoof(stadiumId);
   const group = new THREE.Group();
   const panels: THREE.Matrix4[] = [];

@@ -7,6 +7,7 @@ import { createStadiumDrive } from "./stadium/createStadiumDrive";
 import { createOptimizedPitch, createOptimizedStadium, createPitchLines } from "../utils/models";
 import { disposeScene } from "../utils/penaltyPhysics";
 import { createStadiumAmbience } from "../utils/stadiumAmbience";
+import { createHomeGroundGoal } from "./stadium/createHomeGround";
 
 export default function StadiumBackdrop({ stadiumId, muted }: { stadiumId: StadiumId; muted: boolean }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -41,10 +42,11 @@ export default function StadiumBackdrop({ stadiumId, muted }: { stadiumId: Stadi
     const camera = new THREE.PerspectiveCamera(56, 1, 0.1, 850);
     const crowd = createOptimizedStadium(stadium.seatColor, stadium.awaySeatColor, stadium.seatColor, stadiumId);
     const activity = createStadiumActivity(stadium.seatColor, stadium.awaySeatColor, stadiumId);
-    scene.add(createOptimizedPitch(), createPitchLines(), crowd.stadiumGroup,
+    scene.add(createOptimizedPitch(stadiumId), createPitchLines(stadiumId), crowd.stadiumGroup,
       createStadiumSurroundings(stadium.seatColor, stadium.awaySeatColor, stadiumId), activity.group);
+    if (stadiumId === "home-ground") scene.add(createHomeGroundGoal());
     const drive = createStadiumDrive(camera, stadiumId);
-    const ambience = createStadiumAmbience();
+    const ambience = createStadiumAmbience(stadiumId !== "home-ground");
     ambienceRef.current = ambience;
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
     let frame = 0;
@@ -54,8 +56,8 @@ export default function StadiumBackdrop({ stadiumId, muted }: { stadiumId: Stadi
       const width = Math.max(container.clientWidth, 1);
       const height = Math.max(container.clientHeight, 1);
       camera.aspect = width / height;
-      // Keep the whole venue in view on narrow portrait screens.
-      camera.fov = width < height ? 72 : 56;
+      // Frame Home ground more closely so its architecture stays readable.
+      camera.fov = stadiumId === "home-ground" ? (width < height ? 65 : 48) : width < height ? 72 : 56;
       camera.updateProjectionMatrix();
       renderer.setSize(width, height);
       if (motion.matches) renderer.render(scene, camera);

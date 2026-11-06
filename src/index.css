@@ -18,6 +18,50 @@ body {
 button { -webkit-tap-highlight-color: transparent; }
 button:focus-visible { outline: 2px solid #9df4ce; outline-offset: 5px; }
 
+.match-scoreboard { flex: 0 0 auto; width: min(100%, 600px); padding: 8px 8px 6px; z-index: 10; }
+.scoreboard { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 16px; height: 60px; padding: 8px 18px; overflow: hidden; border: 1px solid #b2d3d326; border-radius: 14px; background: linear-gradient(115deg, #1b2c3a, #101b29 65%); box-shadow: inset 0 1px 0 #ffffff08, 0 5px 18px #0003; color: #edf5f2; }
+.scoreboard-team { min-width: 0; position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 7px; }
+.scoreboard-team-away { align-items: flex-end; }
+.scoreboard-player { display: flex; align-items: center; gap: 7px; width: 100%; min-width: 0; }
+.scoreboard-team-away .scoreboard-player { flex-direction: row-reverse; }
+.scoreboard-jersey { flex: 0 0 auto; width: 8px; height: 12px; border: 1px solid #ffffff4d; border-radius: 3px; }
+.scoreboard-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 750; letter-spacing: -.01em; color: #aebec9; }
+.scoreboard-team[data-active="true"] .scoreboard-name { color: #f5fbf7; }
+.scoreboard-team[data-active="true"]::after { content: ""; position: absolute; bottom: -9px; left: 0; width: 28px; height: 2px; border-radius: 2px; background: #b6f3cd; box-shadow: 0 0 8px #b6f3cd30; }
+.scoreboard-team-away[data-active="true"]::after { left: auto; right: 0; }
+.scoreboard-shots { display: flex; flex-wrap: nowrap; align-items: center; gap: 4px; height: 9px; }
+.scoreboard-shot { flex: 0 0 auto; display: grid; place-items: center; width: 9px; height: 9px; border: 1px solid #6b8291; border-radius: 50%; font-size: 7px; font-weight: 800; line-height: 1; }
+.scoreboard-shot.is-goal { background: #b6f3cd; border-color: #b6f3cd; color: #163c2d; }
+.scoreboard-shot.is-miss { background: #d9837a; border-color: #d9837a; color: #411c1a; }
+.scoreboard-shot.is-current { border-color: #d4f8e2; background: #b6f3cd1f; box-shadow: 0 0 0 2px #b6f3cd14; }
+.scoreboard-shot-offset { flex: 0 0 auto; font-size: 8px; line-height: 1; color: #aebec9; font-variant-numeric: tabular-nums; }
+.scoreboard-center { align-self: stretch; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-width: 102px; padding: 0 16px; border-inline: 1px solid #a9c4d112; }
+.scoreboard-caption { color: #a3cbb8; font-size: 6px; font-weight: 700; line-height: 1; letter-spacing: .2em; }
+.scoreboard-total { display: flex; align-items: center; justify-content: center; gap: 12px; white-space: nowrap; font-size: 29px; font-weight: 850; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -.05em; }
+.scoreboard-separator { color: #8294a4; font-size: 17px; font-weight: 500; transform: translateY(-1px); }
+@media (max-width: 640px) {
+  .match-scoreboard { padding: max(5px, env(safe-area-inset-top)) 4px 5px; }
+  .scoreboard { height: 46px; gap: 10px; padding: 6px 11px; border-radius: 11px; }
+  .scoreboard-team { gap: 5px; }
+  .scoreboard-player { gap: 5px; }
+  .scoreboard-name { font-size: 11px; }
+  .scoreboard-jersey { width: 6px; height: 10px; border-radius: 2px; }
+  .scoreboard-team[data-active="true"]::after { bottom: -7px; width: 20px; }
+  .scoreboard-shots { gap: 3px; height: 7px; }
+  .scoreboard-shot { width: 7px; height: 7px; font-size: 5px; }
+  .scoreboard-center { min-width: 80px; padding: 0 10px; gap: 2px; }
+  .scoreboard-caption { font-size: 5px; }
+  .scoreboard-total { gap: 9px; font-size: 24px; }
+  .scoreboard-separator { font-size: 14px; }
+}
+@media (max-height: 480px) {
+  .match-scoreboard { padding-top: max(4px, env(safe-area-inset-top)); padding-bottom: 4px; }
+  .scoreboard { height: 42px; padding-block: 4px; }
+  .scoreboard-team { gap: 4px; }
+  .scoreboard-total { font-size: 23px; }
+  .scoreboard-team[data-active="true"]::after { bottom: -5px; }
+}
+
 .home-screen { position: absolute; inset: 0; overflow: hidden; background: #182e3b; color: #f6f6ed; isolation: isolate; }
 .stadium-backdrop, .stadium-backdrop-fallback { position: absolute; inset: 0; }
 .stadium-backdrop canvas { width: 100%; height: 100%; display: block; }

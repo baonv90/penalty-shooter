@@ -4,9 +4,19 @@ import { createStadiumRoof } from "./createStadiumRoof";
 import { getStadiumLayout, getStadiumRows } from "./stadiumLayout";
 import { createSanSiroBowl } from "./createSanSiroBowl";
 import { createStamfordBridgeBowl } from "./createStamfordBridge";
+import { createHomeGround, createHomeGroundGoal } from "./createHomeGround";
+import { createHomeGroundTraffic } from "./createHomeGroundTraffic";
+import { createFieldGrass, createFieldMarkings } from "../../utils/pitch";
 
 /** Small, real 3D models for the selector; the roof is shared with the venue. */
 export function createStadiumMiniature(id: StadiumId) {
+  if (id === "home-ground") {
+    const model = new THREE.Group();
+    model.add(createHomeGround(true), createFieldGrass(id), createFieldMarkings(id), createHomeGroundGoal(), createHomeGroundTraffic().group);
+    model.position.z = -18 * 0.8;
+    model.scale.setScalar(0.8);
+    return model;
+  }
   const stadium = getStadium(id);
   const layout = getStadiumLayout(id);
   const group = new THREE.Group();

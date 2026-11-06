@@ -29,6 +29,15 @@ export function createOptimizedStadium(
 ): StadiumData {
   const stadiumGroup = new THREE.Group();
   stadiumGroup.position.set(0, 0, -10);
+  if (stadiumId === "home-ground") {
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    const material = new THREE.MeshStandardMaterial();
+    const empty = () => new THREE.InstancedMesh(geometry, material, 0);
+    const bodiesInstanced = empty(), headsInstanced = empty(), flagsInstanced = empty();
+    stadiumGroup.name = "home-ground-no-spectators";
+    stadiumGroup.add(bodiesInstanced, headsInstanced, flagsInstanced);
+    return { stadiumGroup, bodiesInstanced, headsInstanced, flagsInstanced, fanPositions: [], flagCount: 0 };
+  }
 
   const fanPositions: Array<{
     x: number;

@@ -2,9 +2,11 @@ import * as THREE from "three";
 import { createRoadRoute } from "./stadiumRoads";
 import { StadiumId } from "../../constants/stadiums";
 import { createStadiumRailway } from "./createStadiumRailway";
+import { createHomeGroundTraffic } from "./createHomeGroundTraffic";
 
 /** Shared traffic and arrivals for the home loop and match entrance. */
 export function createStadiumActivity(homeColor: number, awayColor: number, stadiumId: StadiumId = "arena") {
+  if (stadiumId === "home-ground") return createHomeGroundTraffic();
   const group = new THREE.Group();
   group.name = "stadium-arrivals-and-traffic";
   const railway = stadiumId === "stamford-bridge" ? createStadiumRailway() : null;

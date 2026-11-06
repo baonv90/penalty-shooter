@@ -3,7 +3,13 @@ import { getAudioContext, getIsMuted } from "./audio";
 const cachedBuffers = new WeakMap<AudioContext, AudioBuffer[]>();
 
 /** A small reusable Web Audio graph, with no audio sample generation per frame. */
-export function createStadiumAmbience() {
+export function createStadiumAmbience(hasCrowd = true) {
+  if (!hasCrowd) return {
+    update: (_progress: number) => {},
+    updateMatch: (_time: number, _celebrating = false) => {},
+    setSuspended: (_value: boolean) => {},
+    stop: () => {},
+  };
   const context = getAudioContext();
   const master = context.createGain();
   master.gain.value = 0;

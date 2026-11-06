@@ -29,6 +29,16 @@ export const STADIUMS = [
     awaySeatColor: 0x4b8be0,
     sky: 0xb4c8d6,
   },
+  {
+    id: "home-ground",
+    name: "Home ground",
+    city: "Villa des Merisiers",
+    description: "A quiet home pitch, red-tiled villas and cherry trees in full bloom.",
+    color: "#f4b8ca",
+    seatColor: 0x738e66,
+    awaySeatColor: 0xf3dfb4,
+    sky: 0xc5e1ed,
+  },
 ] as const;
 
 export type StadiumId = (typeof STADIUMS)[number]["id"];

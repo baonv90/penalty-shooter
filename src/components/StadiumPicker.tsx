@@ -17,7 +17,7 @@ export default function StadiumPicker() {
     if (cachedPreviews) return;
     let renderer: THREE.WebGLRenderer | undefined;
     try {
-      // Render three stills with one temporary context. No idle thumbnail loops.
+      // Render venue stills with one temporary context. No idle thumbnail loops.
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
       renderer.setSize(560, 360);
       renderer.setPixelRatio(1);

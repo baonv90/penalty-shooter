@@ -8,9 +8,11 @@ import { createSanSiroBowl } from "./createSanSiroBowl";
 import { createStadiumPlaza } from "./createStadiumPlaza";
 import { createStamfordBridgeBowl } from "./createStamfordBridge";
 import { createSanSiroForecourt } from "./createSanSiroForecourt";
+import { createHomeGround } from "./createHomeGround";
 
 /** Static stadium exterior: shared geometry/materials and instanced scenery. */
 export function createStadiumSurroundings(homeColor: number, awayColor: number, stadiumId: StadiumId = "arena") {
+  if (stadiumId === "home-ground") return createHomeGround();
   const stadium = getStadium(stadiumId);
   const layout = getStadiumLayout(stadiumId);
   const standRows = getStadiumRows(stadiumId);

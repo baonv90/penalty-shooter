@@ -2,6 +2,10 @@ import { StadiumId } from "../../constants/stadiums";
 
 /** All views share the same tiers, canopy height and footprint. */
 export function getStadiumLayout(id: StadiumId) {
+  if (id === "home-ground") return {
+    levels: 0, rowsPerLevel: 0, rowDepth: 0, rowRise: 0, floorRise: 0,
+    roofHeight: 0, roofOuterX: 42, roofOuterZ: 65, roofInnerX: 22, roofInnerZ: 29,
+  };
   if (id === "san-siro") return {
     levels: 3, rowsPerLevel: 5, rowDepth: 4, rowRise: 1.1, floorRise: 8,
     roofHeight: 26, roofOuterX: 44, roofOuterZ: 50, roofInnerX: 22, roofInnerZ: 29,

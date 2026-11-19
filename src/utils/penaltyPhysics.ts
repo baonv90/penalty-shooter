@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
 export const BALL_RADIUS = 0.15;
-export type ShotOutcome = "goal" | "save" | "post" | "miss";
+export type ShotOutcome = "goal" | "save" | "post" | "crossbar" | "miss";
 
 interface CollisionNode {
   bounds: THREE.Box3;

@@ -154,20 +154,22 @@ export function createStadiumLandscape(stadiumId: StadiumId = "arena") {
   const mountainCount = milan ? 10 : 64;
   const mountains = new THREE.InstancedMesh(mountainGeometry,
     new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, flatShading: true }), mountainCount);
-  // Overlay the actual top faces, rather than a scaled cone that intersects the ridge.
+  // Split snow and rock faces so distant peaks never render coplanar surfaces.
   const capGeometry = mountainGeometry.clone();
   const topFaces: number[] = [];
+  const rockFaces: number[] = [];
   const mountainIndices = mountainGeometry.index;
   if (mountainIndices) {
     for (let face = 0; face < mountainIndices.count; face += 3) {
       const indices = [mountainIndices.getX(face), mountainIndices.getX(face + 1), mountainIndices.getX(face + 2)];
       if (indices.every(index => vertices.getY(index) >= 1 / 6 - 0.001)) topFaces.push(...indices);
+      else rockFaces.push(...indices);
     }
   }
   capGeometry.setIndex(topFaces);
   const snowCaps = stadiumId === "san-siro" ? new THREE.InstancedMesh(capGeometry,
-    new THREE.MeshStandardMaterial({ color: 0xf2f7fa, roughness: 1, flatShading: true,
-      polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 }), mountainCount) : null;
+    new THREE.MeshStandardMaterial({ color: 0xf2f7fa, roughness: 1, flatShading: true }), mountainCount) : null;
+  if (snowCaps) mountainGeometry.setIndex(rockFaces);
   if (!snowCaps) capGeometry.dispose();
   if (snowCaps) snowCaps.name = "snow-covered-alpine-peaks";
   for (let i = 0; i < mountainCount; i++) {

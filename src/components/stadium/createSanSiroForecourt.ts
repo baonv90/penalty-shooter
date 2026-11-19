@@ -11,8 +11,9 @@ export function createSanSiroForecourt() {
   const underside = new THREE.MeshStandardMaterial({ color: 0xa59876, emissive: 0x9e8548, emissiveIntensity: 0.12, roughness: 1 });
   const positions: Array<[number, number]> = [];
   for (const side of [-1, 1]) {
-    block(paving, side * 71, 0.025, 18, 24, 0.04, 132);
-    block(paving, 0, 0.025, 18 + side * 81, 166, 0.04, 22);
+    // Keep the forecourt above the perimeter sidewalk where their footprints meet.
+    block(paving, side * 71, 0.08, 18, 24, 0.04, 132);
+    block(paving, 0, 0.08, 18 + side * 81, 166, 0.04, 22);
     for (let i = 0; i < 5; i++) {
       positions.push([side * 73, -22 + i * 20]);
       positions.push([-44 + i * 22, 18 + side * 81]);

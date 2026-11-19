@@ -39,7 +39,7 @@ export default function StadiumBackdrop({ stadiumId, muted }: { stadiumId: Stadi
     const sun = new THREE.DirectionalLight(0xffe4bf, 2.5);
     sun.position.set(-70, 100, 40);
     scene.add(sun);
-    const camera = new THREE.PerspectiveCamera(56, 1, 0.1, 850);
+    const camera = new THREE.PerspectiveCamera(56, 1, 0.5, 850);
     const crowd = createOptimizedStadium(stadium.seatColor, stadium.awaySeatColor, stadium.seatColor, stadiumId);
     const activity = createStadiumActivity(stadium.seatColor, stadium.awaySeatColor, stadiumId);
     scene.add(createOptimizedPitch(stadiumId), createPitchLines(stadiumId), crowd.stadiumGroup,

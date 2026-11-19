@@ -48,7 +48,7 @@ export default function Settings() {
             htmlFor="difficulty"
             className="block text-xs font-bold text-gray-400 mb-2 uppercase"
           >
-            Độ khó
+            Difficulty
           </label>
           <select
             className="min-w-0 w-full p-3 text-sm bg-slate-900 rounded-xl outline-none border border-slate-600"
@@ -56,9 +56,9 @@ export default function Settings() {
             value={diff}
             onChange={(e) => setDiff(e.target.value as Difficulty)}
           >
-            <option value="easy">Dễ (Chậm)</option>
-            <option value="medium">Bình thường</option>
-            <option value="hard">Khó (Nhanh)</option>
+            <option value="easy">Easy (slow)</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard (fast)</option>
           </select>
         </div>
         <div>
@@ -66,7 +66,7 @@ export default function Settings() {
             htmlFor="ball-type"
             className="block text-xs font-bold text-gray-400 mb-2 uppercase"
           >
-            Kiểu bóng
+            Ball style
           </label>
           <select
             className="min-w-0 w-full p-3 text-sm bg-slate-900 rounded-xl outline-none border border-slate-600"
@@ -74,16 +74,16 @@ export default function Settings() {
             value={ball}
             onChange={(e) => setBall(e.target.value as BallType)}
           >
-            <option value="standard">Tiêu chuẩn (Trắng đen)</option>
-            <option value="classic">Cổ điển (Da nâu)</option>
-            <option value="modern">Hiện đại (Neon)</option>
+            <option value="standard">Standard (black & white)</option>
+            <option value="classic">Classic (brown leather)</option>
+            <option value="modern">Modern (neon)</option>
           </select>
         </div>
       </div>
 
       <div className="mb-5">
         <label className="block text-xs font-bold text-gray-400 mb-2 uppercase">
-          Cách sút
+          Shoot controls
         </label>
         <div className="grid grid-cols-2 gap-2">
           <button
@@ -94,7 +94,7 @@ export default function Settings() {
                 : "bg-slate-900 border-slate-600"
             }`}
           >
-            Phím / Nút bấm
+            Keyboard / tap
           </button>
           <button
             onClick={() => setMethod("voice")}
@@ -104,7 +104,7 @@ export default function Settings() {
                 : "bg-slate-900 border-slate-600"
             }`}
           >
-            🎙️ Giọng nói ("Sút")
+            🎙️ Voice (shout)
           </button>
         </div>
       </div>
@@ -116,19 +116,19 @@ export default function Settings() {
             className="min-w-0 bg-slate-900 p-3 rounded-xl border border-slate-700"
           >
             <input
-              aria-label={`Tên người chơi ${playerId + 1}`}
+              aria-label={`Player name ${playerId + 1}`}
               type="text"
               value={players[playerId].name}
               onChange={(e) => setPlayerName(playerId, e.target.value)}
               maxLength={12}
               className="bg-slate-900 border border-slate-600 text-white font-bold px-3 py-1.5 rounded-lg mb-3 w-full text-center focus:outline-none focus:border-yellow-400"
-              placeholder={`Tên Player ${playerId + 1}`}
+              placeholder={`Player ${playerId + 1}`}
             />
             <div className="flex gap-2 flex-wrap justify-center">
               {AVAILABLE_COLORS.map((c) => (
                 <button
                   type="button"
-                  aria-label={`Màu áo ${c.replace("bg-", "")} cho người chơi ${playerId + 1}`}
+                  aria-label={`Jersey color ${c.replace("bg-", "").replace(/-\d+$/, "")} for player ${playerId + 1}`}
                   aria-pressed={players[playerId].jerseyColor === c}
                   key={c}
                   onClick={() => setPlayerColor(playerId, c)}
@@ -144,7 +144,7 @@ export default function Settings() {
             </div>
             <fieldset className="mt-3 min-w-0">
               <legend className="text-xs font-bold text-slate-400 mb-2 uppercase">
-                Thủ môn
+                Goalkeeper
               </legend>
               <div className="grid grid-cols-3 gap-2">
                 {(
@@ -153,19 +153,19 @@ export default function Settings() {
                       type: "human",
                       icon: "🧤",
                       label: "Human",
-                      trait: "Cân bằng",
+                      trait: "Balanced",
                     },
                     {
                       type: "bear",
                       icon: "🐻",
                       label: "Bear",
-                      trait: "To · Chậm",
+                      trait: "Big · Slow",
                     },
                     {
                       type: "skunk",
                       icon: "🦨",
                       label: "Skunk",
-                      trait: "Nhỏ · Nhanh",
+                      trait: "Small · Fast",
                     },
                   ] as const
                 ).map(({ type, icon, label, trait }) => (
@@ -197,7 +197,7 @@ export default function Settings() {
 
       <div className="mb-5">
         <label className="block text-xs font-bold text-gray-400 mb-2 uppercase">
-          Đồ hoạ (Graphics)
+          Graphics
         </label>
         <div className="grid grid-cols-2 gap-2">
           <button
@@ -224,7 +224,7 @@ export default function Settings() {
       </div>
 
       <fieldset className="mb-5 min-w-0">
-        <legend className="block text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider">Stadium / Sân vận động</legend>
+        <legend className="block text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider">Stadium</legend>
         <StadiumPicker />
       </fieldset>
 
@@ -232,7 +232,7 @@ export default function Settings() {
         onClick={handleStart}
         className="w-full py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 rounded-2xl font-black text-xl tracking-widest transition-transform shadow-lg active:scale-95"
       >
-        VÀO SÂN
+        Start match
       </button>
     </div>
   );

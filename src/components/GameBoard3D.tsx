@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { ShotOutcome } from "../utils/penaltyPhysics";
-import { createShot, chooseKeeperDive } from "../utils/shotSimulation";
+import { createShot, chooseKeeperDive, getAimTargetX } from "../utils/shotSimulation";
 import { randomizeShotQuality } from "../utils/shotQuality";
 import Penalty3D from "./Penalty3D";
 import { useGameStore } from "../store/gameStore";
@@ -62,7 +62,7 @@ export default function GameBoard3D() {
       // PHASE 1: Quét mũi tên chọn hướng sút (Góc sút)
       if (phase === "aiming") {
         const prev = controlsRef.current.aimValue;
-        let next = prev + 0.025 * frameScale * aimDirRef.current;
+        let next = prev + 0.018 * frameScale * aimDirRef.current;
         if (next >= 1) {
           next = 1;
           aimDirRef.current = -1;
@@ -102,8 +102,8 @@ export default function GameBoard3D() {
 
     // NHỊP 1: BẤM LẦN 1 -> CHỐT HƯỚNG SÚT
     if (phase === "aiming") {
-      // Chuyển aimValue (0 -> 1) thành tọa độ ngang khung thành X (-3.4m đến +3.4m)
-      chosenTargetX.current = -3.4 + controlsRef.current.aimValue * 6.8;
+      // The sweep extends past both posts so corners can be selected before the turn.
+      chosenTargetX.current = getAimTargetX(controlsRef.current.aimValue);
       const quality = randomizeShotQuality();
       controlsRef.current.scaleValue = quality.scaleValue;
       scaleDirRef.current = quality.direction;
@@ -125,6 +125,7 @@ export default function GameBoard3D() {
           shot.target[0],
           difficulty,
           currentGK?.gkType ?? "human",
+          controlsRef.current.scaleValue,
         ),
       );
     }
@@ -139,10 +140,11 @@ export default function GameBoard3D() {
       setPhase("result");
       setResultMsg(
         {
-          save: "🧤 CẢN PHÁ!",
-          goal: "⚽ VÀOOOOOO!",
-          post: "💥 CỘT DỌC!",
-          miss: "❌ TRƯỢT!",
+          save: "Saved!",
+          goal: "Goal!",
+          post: "Post!",
+          crossbar: "Crossbar!",
+          miss: "Miss!",
         }[outcome],
       );
       resultTimer.current = setTimeout(() => {
@@ -153,7 +155,7 @@ export default function GameBoard3D() {
         controlsRef.current.aimValue = 0.5;
         setPhase("aiming");
         shotResolved.current = false;
-        recordShot(outcome === "save" ? "miss" : outcome, matchId);
+        recordShot(outcome === "save" ? "miss" : outcome === "crossbar" ? "post" : outcome, matchId);
       }, 1700);
     },
     [recordShot, matchId],
@@ -201,8 +203,8 @@ export default function GameBoard3D() {
 
         {/* Thông báo kết quả sút */}
         {resultMsg && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center z-30 pointer-events-none">
-            <h2 className="text-7xl font-black tracking-widest italic uppercase drop-shadow-[0_10px_30px_#000]">
+          <div className="absolute inset-x-0 top-3 sm:top-6 flex justify-center px-4 z-30 pointer-events-none">
+            <h2 className="shot-result-text" role="status" aria-live="polite" aria-atomic="true">
               {resultMsg}
             </h2>
           </div>

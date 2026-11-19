@@ -182,7 +182,7 @@ export default function PenaltySpot() {
     // 6. Hiệu ứng va chạm và kết quả sau khi bóng bay đến đích (450ms)
     resultTimers.current.push(setTimeout(() => {
       if (finalResult === "save") {
-        setResultMsg("🧤 CẢN PHÁ!");
+        setResultMsg("Saved!");
         playGroan(); // Tiếng khán đài tiếc nuối
         // Bóng đập người thủ môn nảy ngược lại (phản xạ)
         setBallAnim((prev) => ({
@@ -191,11 +191,11 @@ export default function PenaltySpot() {
           scale: 0.7,
         }));
       } else if (finalResult === "goal") {
-        setResultMsg("⚽ VÀOOOOOO!");
+        setResultMsg("Goal!");
         setNetBulge(true);
         playCheer();
       } else if (finalResult === "post") {
-        setResultMsg("💥 CỘT DỌC!");
+        setResultMsg("Post!");
         playGroan();
         // Bóng nảy ra từ cột dọc
         setBallAnim((prev) => ({
@@ -204,7 +204,7 @@ export default function PenaltySpot() {
           scale: 0.65,
         }));
       } else {
-        setResultMsg("❌ TRƯỢT!");
+        setResultMsg("Miss!");
         playGroan();
       }
 
@@ -248,7 +248,10 @@ export default function PenaltySpot() {
         <motion.div
           initial={{ opacity: 0, y: 10, scale: 0.5 }}
           animate={{ opacity: 1, y: -60, scale: 1 }}
-          className="absolute -top-[100px] text-4xl md:text-5xl font-black text-yellow-300 drop-shadow-[0_4px_6px_rgba(0,0,0,0.9)] z-50 whitespace-nowrap"
+          className="shot-result-text absolute -top-[100px] z-50"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
         >
           {resultMsg}
         </motion.div>
@@ -311,6 +314,7 @@ export default function PenaltySpot() {
       </motion.div>
       {shootMethod === "button" ? (
         <button
+          aria-label="Shoot"
           className="absolute w-[100vw] h-[100vh] pointer-events-auto bg-transparent"
           onClick={handleShoot}
         />
@@ -318,7 +322,7 @@ export default function PenaltySpot() {
         <div className="absolute top-[80px] px-4 py-2 bg-slate-900/90 border border-green-500/50 text-green-400 font-bold rounded-full text-xs flex flex-col items-center shadow-lg">
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-ping" />
-            <span>🎙️ Hét lớn để sút!</span>
+            <span>🎙️ Shout to shoot!</span>
           </div>
         </div>
       )}

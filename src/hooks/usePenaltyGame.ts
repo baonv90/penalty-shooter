@@ -7,7 +7,7 @@ export function usePenaltyGame() {
   const [aimValue, setAimValue] = useState(0.5); // 0 (Trái) -> 1 (Phải)
   const [powerValue, setPowerValue] = useState(0); // 0 -> 1 (0.5 là hoàn hảo)
   const [lastResult, setLastResult] = useState<
-    "VÀOOO!" | "CẢN PHÁ!" | "RA NGOÀI!" | null
+    "GOAL!" | "SAVED!" | "MISS!" | null
   >(null);
   const [score, setScore] = useState({ goals: 0, saves: 0 });
 
@@ -95,13 +95,13 @@ export function usePenaltyGame() {
           finalTarget[0] > 3.7 ||
           finalTarget[1] > 2.5
         ) {
-          setLastResult("RA NGOÀI!");
+          setLastResult("MISS!");
         } else if (Math.abs(gkX - finalTarget[0]) < 1.2) {
           setScore((s) => ({ ...s, saves: s.saves + 1 }));
-          setLastResult("CẢN PHÁ!");
+          setLastResult("SAVED!");
         } else {
           setScore((s) => ({ ...s, goals: s.goals + 1 }));
-          setLastResult("VÀOOO!");
+          setLastResult("GOAL!");
         }
         setPhase("result");
       }, 1600);

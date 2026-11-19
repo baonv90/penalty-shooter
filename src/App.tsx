@@ -18,7 +18,7 @@ export default function App() {
   };
 
   return (
-    <main className={`relative w-full h-[100dvh] bg-slate-950 flex flex-col items-center font-sans select-none overflow-hidden ${gamePhase === "menu" ? "" : "px-1 pb-1"}`}>
+    <main className={`app-shell relative w-full bg-slate-950 flex flex-col items-center font-sans select-none overflow-hidden ${gamePhase === "menu" ? "" : "px-1 pb-1"}`}>
       {/* Bảng tỉ số (nằm hoàn toàn ngoài sân bóng để không che gôn) */}
       {gamePhase !== "menu" && (
         <div className="match-scoreboard">
@@ -42,8 +42,8 @@ export default function App() {
         {/* Trạng thái Kết thúc Game */}
         {gamePhase === "gameover" && winner && (
           <div role="dialog" aria-modal="true" aria-label="Match finished" className="absolute inset-0 z-[70] flex flex-col items-center justify-center bg-slate-950/85 backdrop-blur-sm p-6">
-            <h2 className="text-4xl md:text-5xl font-black text-yellow-400 drop-shadow-[0_0_20px_rgba(250,204,21,0.6)] animate-bounce mb-10 text-center uppercase tracking-wider">
-              CHÚC MỪNG
+            <h2 className="max-w-full break-words text-[clamp(1.5rem,7vw,3rem)] font-black text-yellow-400 drop-shadow-[0_0_20px_rgba(250,204,21,0.6)] animate-bounce mb-6 text-center uppercase tracking-wide">
+              WINNER
               <br />
               {players[winner - 1].name}
             </h2>
@@ -53,7 +53,7 @@ export default function App() {
                 onClick={() => startGame()}
                 className="flex-1 py-4 bg-gradient-to-b from-green-400 to-green-600 text-white font-black rounded-full text-xl shadow-[0_6px_0_#166534] active:translate-y-1 active:shadow-none transition-all"
               >
-                ⚽ CHƠI LẠI
+                ⚽ Play again
               </button>
               <button
                 type="button"
@@ -61,7 +61,7 @@ export default function App() {
                 aria-label="Back to home"
                 className="flex-1 py-4 bg-gradient-to-b from-slate-600 to-slate-800 text-white font-black rounded-full text-xl shadow-[0_6px_0_#1e293b] active:translate-y-1 active:shadow-none transition-all"
               >
-                🏠 VỀ TRANG CHỦ
+                🏠 Home
               </button>
             </div>
           </div>
@@ -75,13 +75,13 @@ export default function App() {
             aria-label="Back to home"
             className="px-4 py-2.5 bg-red-700/90 hover:bg-red-600 text-white text-sm font-bold rounded-full border border-red-500 shadow-2xl flex items-center gap-2 transition-all active:scale-95 backdrop-blur-md"
           >
-            🚪 Thoát game
+            🚪 Exit game
           </button>
         <button
           onClick={handleToggleMute}
           className="px-4 py-2.5 bg-slate-800/90 hover:bg-slate-700 text-white text-sm font-bold rounded-full border border-slate-600 shadow-2xl flex items-center gap-2 transition-all active:scale-95 backdrop-blur-md"
         >
-          {muted ? "🔇 Đã tắt tiếng" : "🔊 Bật âm thanh"}
+          {muted ? "🔇 Unmute" : "🔊 Mute"}
         </button>
       </div>}
     </main>

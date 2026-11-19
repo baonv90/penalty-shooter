@@ -6,7 +6,7 @@ import * as THREE from "three";
 import { jerseyNumberColor } from "../utils/jersey";
 import { getHexColor } from "../utils/textures";
 import { animateKicker, KICK_CONTACT_TIME } from "../utils/playerAnimation";
-import { GOAL, SHOT_GRAVITY, launchShot, keeperReaction, isInsideGoal, constrainScoredBall } from "../utils/shotSimulation";
+import { GOAL, SHOT_GRAVITY, launchShot, keeperReaction, isInsideGoal, constrainScoredBall, getAimTargetX } from "../utils/shotSimulation";
 import { playCheer, playGroan, playKick } from "../utils/audio";
 import { StadiumData } from "../utils/models";
 
@@ -58,7 +58,7 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<Penalty3DProp
     const frameCollision = createKeeperCollision(elements.goalFrame);
     let shotElapsed = 0;
     let flightElapsed = 0;
-    let hitPost = false;
+    let hitFrame: "post" | "crossbar" | null = null;
     let postCooldown = 0;
     const divePose = { elapsed: 0, duration: 0.4, targetY: 1, targetX: 0 };
     const findContact = (start: THREE.Vector3, end: THREE.Vector3, collide: typeof frameCollision) => {
@@ -155,7 +155,7 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<Penalty3DProp
 
       // NHỊP 1: Định hướng
       aimArrowGroup.visible = !entering && !propsRef.current.introActive && phase === "aiming";
-      aimArrowGroup.rotation.y = (aimValue - 0.5) * -Math.PI * 0.8;
+      aimArrowGroup.rotation.y = Math.atan2(-getAimTargetX(aimValue), 2 - GOAL.z);
 
       // NHỊP 2: Vòng canh nhịp 3D
       timingRingGroup.visible = !entering && phase === "timing";
@@ -184,7 +184,7 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<Penalty3DProp
       } else {
         shotElapsed = 0;
         flightElapsed = 0;
-        hitPost = false;
+        hitFrame = null;
         postCooldown = 0;
         state.ballStartKick = false;
         state.hasBounced = false;
@@ -252,14 +252,13 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<Penalty3DProp
                 state.reboundVel.y = Math.max(1.5, Math.abs(state.reboundVel.y) * 0.4);
                 state.reboundVel.z = Math.abs(state.reboundVel.z) * 0.4;
               } else {
-                hitPost = true;
                 postCooldown = 0.045;
                 // Reflect around the nearest post/crossbar axis instead of a random bounce.
+                const sidePost = Math.abs(Math.abs(ballGroup.position.x) - GOAL.halfWidth) < Math.abs(ballGroup.position.y - GOAL.height);
+                hitFrame = sidePost ? "post" : "crossbar";
                 contactPoint.set(
-                  Math.abs(Math.abs(ballGroup.position.x) - GOAL.halfWidth) < Math.abs(ballGroup.position.y - GOAL.height)
-                    ? Math.sign(ballGroup.position.x) * GOAL.halfWidth : ballGroup.position.x,
-                  Math.abs(Math.abs(ballGroup.position.x) - GOAL.halfWidth) < Math.abs(ballGroup.position.y - GOAL.height)
-                    ? THREE.MathUtils.clamp(ballGroup.position.y, 0, GOAL.height) : GOAL.height,
+                  sidePost ? Math.sign(ballGroup.position.x) * GOAL.halfWidth : ballGroup.position.x,
+                  sidePost ? THREE.MathUtils.clamp(ballGroup.position.y, 0, GOAL.height) : GOAL.height,
                   GOAL.z
                 );
                 direction.subVectors(ballGroup.position, contactPoint).normalize();
@@ -276,7 +275,7 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<Penalty3DProp
                   playCheer();
                   state.reboundVel.multiplyScalar(0.65);
                 } else {
-                  resolve(hitPost ? "post" : "miss");
+                  resolve(hitFrame ?? "miss");
                   playGroan();
                 }
               }
@@ -297,7 +296,7 @@ export function usePenaltyPhysics(propsRef: React.MutableRefObject<Penalty3DProp
           ballGroup.rotation.z -= state.reboundVel.x * step / BALL_RADIUS;
           if (!resolved && (flightElapsed > 3 || (flightElapsed > 0.3 && ballGroup.position.z > 3.5))) {
             state.hasBounced = true;
-            resolve(hitPost ? "post" : "miss");
+            resolve(hitFrame ?? "miss");
             playGroan();
           }
         }

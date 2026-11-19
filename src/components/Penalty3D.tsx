@@ -106,7 +106,7 @@ export default function Penalty3D({
     const height = Math.max(container.clientHeight, 1);
 
     // 1. Perspective Camera aspect ratio calculation
-    const camera = new THREE.PerspectiveCamera(getGameCameraFov(width / height, stadiumId), width / height, 0.1, 800);
+    const camera = new THREE.PerspectiveCamera(getGameCameraFov(width / height, stadiumId), width / height, 0.5, 800);
     camera.position.set(...getGameCameraPosition(stadiumId));
     camera.lookAt(0, 1.2, -4);
 

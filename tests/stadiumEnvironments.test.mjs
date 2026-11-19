@@ -73,6 +73,26 @@ test('San Siro has seating in the same corner on all floors and an aligned exter
   assert.ok(outerFaces.every(x => Math.abs(x - outerFaces[0]) < 0.2), 'the floors must share one footprint');
 });
 
+test('San Siro snow and forecourt have no coplanar rock or sidewalk surfaces', () => {
+  const stadium = createStadiumSurroundings(0xff0000, 0x0000ff, 'san-siro');
+  const snow = stadium.getObjectByName('snow-covered-alpine-peaks');
+  const rocks = snow.parent.children.find(object => object.isInstancedMesh && object.count === snow.count && object !== snow);
+  const faces = geometry => {
+    const indices = geometry.index.array;
+    const result = new Set();
+    for (let i = 0; i < indices.length; i += 3) result.add([...indices.slice(i, i + 3)].sort((a, b) => a - b).join(','));
+    return result;
+  };
+  const rockFaces = faces(rocks.geometry);
+  assert.ok(faces(snow.geometry).size > 0);
+  assert.ok([...faces(snow.geometry)].every(face => !rockFaces.has(face)), 'snow replaces rock faces rather than overlaying them');
+  stadium.updateMatrixWorld(true);
+  const ray = new THREE.Raycaster(new THREE.Vector3(59.5, 1, 18), new THREE.Vector3(0, -1, 0));
+  const groundHits = ray.intersectObject(stadium, true).filter(hit => hit.point.y < 0.2);
+  assert.ok(Math.abs(groundHits[0].point.y - 0.1) < 1e-5, 'forecourt sits above the sidewalk');
+  assert.ok(groundHits.some(hit => Math.abs(hit.point.y - 0.045) < 1e-5), 'the perimeter sidewalk remains below');
+});
+
 test('multi-floor crowds fit inside each stadium canopy and occupy all four stands', () => {
   for (const [id, levels] of [['san-siro', 3], ['stamford-bridge', 2]]) {
     const layout = getStadiumLayout(id);
